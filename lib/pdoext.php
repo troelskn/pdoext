@@ -11,7 +11,7 @@ class PdoExt extends PDO
   protected $nameOpening;
   protected $nameClosing;
 
-  public function __construct($dsn, $user, $password, $failSafe = TRUE) {
+  public function __construct($dsn, $user = NULL, $password = NULL, $failSafe = TRUE) {
     try {
        parent::__construct($dsn, $user, $password);
        $this->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);

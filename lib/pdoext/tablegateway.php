@@ -67,7 +67,7 @@ class pdoext_TableGateway
    * @return array
    */
   function fetch($condition) {
-    $query = "DELETE FROM ".$this->db->quoteName($this->tableName);
+    $query = "SELECT * FROM ".$this->db->quoteName($this->tableName);
     $where = Array();
     $values = Array();
     foreach ($condition as $column => $value) {
