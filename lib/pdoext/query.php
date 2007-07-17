@@ -15,7 +15,7 @@ class pdoext_Query extends pdoext_query_Criteria
 
   protected $groupby = Array();
 
-  public function __construct(PdoExt $connection, $table, $alias = NULL, $quote_name = TRUE, $sql_calc_found_rows = FALSE) {
+  public function __construct(pdoext_Connection $connection, $table, $alias = NULL, $quote_name = TRUE, $sql_calc_found_rows = FALSE) {
     parent::__construct('AND');
     $this->connection = $connection;
     if (is_null($alias)) {
@@ -84,7 +84,7 @@ class pdoext_Query extends pdoext_query_Criteria
   public function setOffset($offset) {
     $this->offset = $offset;
   }
-  
+
   public function setSqlCalcFoundRows($value) {
     $this->sql_calc_found_rows = $value;
   }
@@ -139,4 +139,3 @@ class pdoext_Query extends pdoext_query_Criteria
     return $sql;
   }
 }
-?>

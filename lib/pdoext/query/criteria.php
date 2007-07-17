@@ -29,7 +29,7 @@ class pdoext_query_Criteria implements pdoext_query_ICriterion
     return $criterion;
   }
 
-  public function toSQL(PdoExt $connection) {
+  public function toSQL(pdoext_Connection $connection) {
     if (count($this->criteria) == 0) {
       return "";
     }
@@ -40,4 +40,3 @@ class pdoext_query_Criteria implements pdoext_query_ICriterion
     return "(".implode($this->conjunction, $criteria).")";
   }
 }
-?>

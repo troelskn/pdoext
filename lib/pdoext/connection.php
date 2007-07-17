@@ -4,7 +4,7 @@
   * Adds a few helpers and patches differences between sqlite and mysql.
   * @license LGPL
   */
-class PdoExt extends PDO
+class pdoext_Connection extends PDO
 {
   protected $inTransaction = FALSE;
 
@@ -40,7 +40,7 @@ class PdoExt extends PDO
           Array($this, '__sqlite_group_concat_finalize'),
           2
         );
-        $this->setAttribute(PDO::ATTR_STATEMENT_CLASS, Array('PdoExt_SQLiteStatement'));
+        $this->setAttribute(PDO::ATTR_STATEMENT_CLASS, Array('pdoext_SQLiteStatement'));
         // fallthru
 
       default:
@@ -84,7 +84,7 @@ class PdoExt extends PDO
     */
   public function assertTransaction() {
     if (!$this->inTransaction()) {
-      throw new PdoExt_NoTransactionStartedException();
+      throw new pdoext_NoTransactionStartedException();
     }
   }
 
@@ -93,7 +93,7 @@ class PdoExt extends PDO
     */
   public function beginTransaction() {
     if ($this->inTransaction) {
-      throw new PdoExt_AlreadyInTransactionException(sprintf("Already in transaction. Tansaction started at line %s in file %s", $this->inTransaction[0], $this->inTransaction[1]));
+      throw new pdoext_AlreadyInTransactionException(sprintf("Already in transaction. Tansaction started at line %s in file %s", $this->inTransaction[0], $this->inTransaction[1]));
     }
     $result = parent::beginTransaction();
     $stack = debug_backtrace();
@@ -161,7 +161,7 @@ class PdoExt extends PDO
         }
         return $meta;
       default:
-        throw new PdoExt_MetaNotSupportedException();
+        throw new pdoext_MetaNotSupportedException();
     }
   }
 }
@@ -170,7 +170,7 @@ class PdoExt extends PDO
   * Workaround for a bug in sqlite:
   *   http://www.sqlite.org/cvstrac/tktview?tn=2378
   */
-class PdoExt_SQLiteStatement extends PDOStatement
+class pdoext_SQLiteStatement extends PDOStatement
 {
   protected function fixQuoteBug($hash) {
     $result = Array();
@@ -193,16 +193,16 @@ class PdoExt_SQLiteStatement extends PDOStatement
   }
 }
 
-class PdoExt_NoTransactionStartedException extends Exception
+class pdoext_NoTransactionStartedException extends Exception
 {
   function __construct($message = "No transaction started", $code = 0) {
     parent::__construct($message, $code);
   }
 }
 
-class PdoExt_AlreadyInTransactionException extends Exception {}
+class pdoext_AlreadyInTransactionException extends Exception {}
 
-class PdoExt_MetaNotSupportedException extends Exception
+class pdoext_MetaNotSupportedException extends Exception
 {
   function __construct($message = "Meta querying not available for driver type", $code = 0) {
     parent::__construct($message, $code);

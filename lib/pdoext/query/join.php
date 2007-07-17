@@ -12,7 +12,7 @@ class pdoext_query_Join extends pdoext_query_Criteria
     $this->alias = $alias;
   }
 
-  public function toSQL(PdoExt $connection) {
+  public function toSQL(pdoext_Connection $connection) {
     if (count($this->criteria) > 0) {
       $_on = " ON ".parent::toSQL($connection);
     } else {
@@ -24,4 +24,3 @@ class pdoext_query_Join extends pdoext_query_Criteria
     return $this->type.$connection->quoteName($this->table).$_on;
   }
 }
-?>

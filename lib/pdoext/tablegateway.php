@@ -13,9 +13,9 @@ class pdoext_TableGateway
   /**
    *
    * @param  $tableName  string  Name of the table
-   * @param  $db         PdoExt  The database connection
+   * @param  $db         pdoext_Connection  The database connection
    */
-  function __construct($tableName, $db) {
+  function __construct($tableName, pdoext_Connection $db) {
     $this->tableName = $tableName;
     $this->db = $db;
     $this->pkey = $this->getPKey();

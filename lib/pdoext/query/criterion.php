@@ -20,7 +20,7 @@ class pdoext_query_Criterion implements pdoext_query_ICriterion
     $this->quoteType = $quoteType;
   }
 
-  public function toSQL(PdoExt $connection) {
+  public function toSQL(pdoext_Connection $connection) {
     $sql = "";
     $comparator = trim($this->comparator);
     if ($this->quoteType > 0) {
@@ -65,4 +65,3 @@ class pdoext_query_Criterion implements pdoext_query_ICriterion
     return "$sql $comparator ".$this->value;
   }
 }
-?>

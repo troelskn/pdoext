@@ -1,7 +1,7 @@
 <?php
 require_once 'simpletest.inc.php';
 
-require_once '../lib/pdoext.php';
+require_once '../lib/pdoext/connection.php';
 require_once '../lib/pdoext/tablegateway.php';
 require_once '../lib/pdoext/query/icriterion.php';
 require_once '../lib/pdoext/query/criterion.php';
@@ -11,8 +11,8 @@ require_once '../lib/pdoext/query.php';
 
 class TestOfQuery extends UnitTestCase
 {
-  protected function getPdoExt() {
-    return new PdoExt("sqlite::memory:");
+  protected function getConnection() {
+    return new pdoext_Connection("sqlite::memory:");
   }
 
   function assertSqlEqual($sqlA, $sqlB) {
@@ -32,28 +32,28 @@ class TestOfQuery extends UnitTestCase
   }
 
   function test_select_where() {
-    $db = $this->getPdoExt();
+    $db = $this->getConnection();
     $q = new pdoext_Query($db, 'people');
     $q->addCriterion('first_name', "John");
     $this->assertSqlEqual($q->toSql(), "select * from `people` where `first_name` = 'John'");
   }
 
   function test_select_where_in_array() {
-    $db = $this->getPdoExt();
+    $db = $this->getConnection();
     $q = new pdoext_Query($db, 'people');
     $q->addCriterion('first_name', Array("John", "Jim"));
     $this->assertSqlEqual($q->toSql(), "select * from `people` where `first_name` in ('John', 'Jim')");
   }
 
   function test_select_where_not_null() {
-    $db = $this->getPdoExt();
+    $db = $this->getConnection();
     $q = new pdoext_Query($db, 'people');
     $q->addCriterion('first_name', NULL, "!=");
     $this->assertSqlEqual($q->toSql(), "select * from `people` where `first_name` is not null");
   }
 
   function test_select_left_join() {
-    $db = $this->getPdoExt();
+    $db = $this->getConnection();
     $q = new pdoext_Query($db, 'people');
     $j = $q->addJoin('accounts', 'LEFT JOIN');
     $j->addConstraint('people.account_id', 'accounts.account_id');
@@ -61,7 +61,7 @@ class TestOfQuery extends UnitTestCase
   }
 
   function test_select_specific_column() {
-    $db = $this->getPdoExt();
+    $db = $this->getConnection();
     $q = new pdoext_Query($db, 'people');
     $q->addColumn("first_name");
     $q->addCriterion('first_name', "John");
@@ -69,7 +69,7 @@ class TestOfQuery extends UnitTestCase
   }
 
   function test_select_specific_column_as_alias() {
-    $db = $this->getPdoExt();
+    $db = $this->getConnection();
     $q = new pdoext_Query($db, 'people');
     $q->addColumn("first_name as name", FALSE);
     $q->addCriterion('first_name', "John");
@@ -77,7 +77,7 @@ class TestOfQuery extends UnitTestCase
   }
 
   function test_select_where_composite_condition() {
-    $db = $this->getPdoExt();
+    $db = $this->getConnection();
     $q = new pdoext_Query($db, 'people');
     $sub = $q->addCriterion(new pdoext_query_Criteria("OR"));
     $sub->addCriterion('first_name', "John");
