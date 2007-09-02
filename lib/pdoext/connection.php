@@ -15,7 +15,6 @@ class pdoext_Connection extends PDO
     try {
        parent::__construct($dsn, $user, $password);
        $this->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-       $this->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, TRUE);
     } catch (PDOException $ex) {
       if ($failSafe) {
         die("Database connection failed: " . $ex->getMessage() . " in file ".__FILE__." at line ".__LINE__);
@@ -25,6 +24,7 @@ class pdoext_Connection extends PDO
     }
     switch ($this->getAttribute(PDO::ATTR_DRIVER_NAME)) {
       case 'mysql':
+        $this->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, TRUE);
         $this->nameOpening = $this->nameClosing = '`';
         break;
 
