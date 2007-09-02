@@ -105,4 +105,24 @@ class TestOfTableGatewayBasicUsecases extends UnitTestCase
   }
 }
 
+class TestOfTableGateway extends UnitTestCase
+{
+  function test_arrayobject_is_marshalled_to_hash() {
+    $connection = new pdoext_Connection("sqlite::memory:");
+    $connection->exec(
+      'CREATE TABLE users (
+         id INTEGER,
+         name VARCHAR(255)
+       )'
+    );
+    $john = new ArrayObject(Array('id' => 42, 'name' => 'John'));
+    $gateway = new pdoext_TableGateway('users', $connection);
+    $gateway->insert($john);
+
+    $result = $connection->pexecute("SELECT * FROM users WHERE id = '42'");
+    $row = $result->fetch(PDO::FETCH_ASSOC);
+    $this->assertEqual($row, Array('id' => 42, 'name' => 'John'));
+  }
+}
+
 simpletest_autorun(__FILE__);

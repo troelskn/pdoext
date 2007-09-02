@@ -21,6 +21,16 @@ class pdoext_TableGateway
     $this->pkey = $this->getPKey();
   }
 
+  protected function marshal($object) {
+    if (is_array($object)) {
+      return $object;
+    }
+    if ($object instanceOf ArrayObject) {
+      return $object->getArrayCopy();
+    }
+    throw new Exception("Unable to marshal object into hash.");
+  }
+
   /**
    * Introspects the schema, and returns an array of the table's columns.
    * @return [] hash
@@ -67,6 +77,7 @@ class pdoext_TableGateway
    * @return array
    */
   function fetch($condition) {
+    $condition = $this->marshal($condition);
     $query = "SELECT * FROM ".$this->db->quoteName($this->tableName);
     $where = Array();
     $values = Array();
@@ -88,12 +99,10 @@ class pdoext_TableGateway
    * @return boolean
    */
   function insert($data) {
+    $data = $this->marshal($data);
     $query = "INSERT INTO ".$this->db->quoteName($this->tableName);
     $columns = Array();
     $values = Array();
-    if (is_object($data)) {
-      $data = $data->getArrayCopy();
-    }
     foreach ($this->getColumns() as $column) {
       if (array_key_exists($column, $data)) {
         $columns[] = $column;
@@ -112,13 +121,12 @@ class pdoext_TableGateway
    * @return boolean
    */
   function update($data, $condition) {
+    $data = $this->marshal($data);
+    $condition = $this->marshal($condition);
     $query = "UPDATE ".$this->db->quoteName($this->tableName)." SET";
     $columns = Array();
     $values = Array();
     $pk = $this->getPKey();
-    if (is_object($data)) {
-      $data = $data->getArrayCopy();
-    }
     foreach ($this->getColumns() as $column) {
       if (array_key_exists($column, $data) && $column != $pk) {
         $columns[] = $this->db->quoteName($column)." = :".$column;
@@ -144,6 +152,7 @@ class pdoext_TableGateway
    * @return boolean
    */
   function delete($condition) {
+    $condition = $this->marshal($condition);
     $query = "DELETE FROM ".$this->db->quoteName($this->tableName);
     $where = Array();
     $values = Array();
