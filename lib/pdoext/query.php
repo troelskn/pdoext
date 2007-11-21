@@ -99,7 +99,10 @@ class pdoext_Query extends pdoext_query_Criteria
     return $result->fetchColumn(0);
   }
 
-  public function toSQL() {
+  public function toSQL(pdoext_Connection $connection = null) {
+    if (is_null($connection)) {
+      $connection = $this->connection;
+    }
     $sql = "SELECT";
     if ($this->sql_calc_found_rows) {
       $sql .= " SQL_CALC_FOUND_ROWS";
@@ -112,11 +115,11 @@ class pdoext_Query extends pdoext_query_Criteria
 
     $sql .= "\nFROM ".$this->table;
     foreach ($this->joins as $jay) {
-      $sql .= "\n".$jay->toSQL($this->connection);
+      $sql .= "\n".$jay->toSQL($connection);
     }
 
     if (count($this->criteria) > 0) {
-      $sql .= "\nWHERE ".parent::toSQL($this->connection)." ";
+      $sql .= "\nWHERE ".parent::toSQL($connection)." ";
     }
 
     if (count($this->groupby) > 0) {
