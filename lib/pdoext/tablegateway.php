@@ -83,7 +83,7 @@ class pdoext_TableGateway
     $values = Array();
     foreach ($condition as $column => $value) {
       $where[] = $this->db->quoteName($column)." = :".$column;
-      $values[$column] = $value;
+      $values[":".$column] = $value;
     }
     if (count($where) == 0) {
       throw new Exception("No conditions given for fetch");
@@ -106,7 +106,7 @@ class pdoext_TableGateway
     foreach ($this->getColumns() as $column) {
       if (array_key_exists($column, $data)) {
         $columns[] = $column;
-        $values[$column] = $data[$column];
+        $values[":".$column] = $data[$column];
       }
     }
     $query .= " (".implode(",", array_map(Array($this->db, 'quoteName'), $columns)).")";
@@ -130,14 +130,14 @@ class pdoext_TableGateway
     foreach ($this->getColumns() as $column) {
       if (array_key_exists($column, $data) && $column != $pk) {
         $columns[] = $this->db->quoteName($column)." = :".$column;
-        $values[$column] = $data[$column];
+        $values[":".$column] = $data[$column];
       }
     }
     $query .= "\n    ".implode(",\n    ", $columns);
     $where = Array();
     foreach ($condition as $column => $value) {
       $where[] = $this->db->quoteName($column)." = :where_".$column;
-      $values["where_".$column] = $value;
+      $values[":where_".$column] = $value;
     }
     if (count($where) == 0) {
       throw new Exception("No conditions given for update");
@@ -158,7 +158,7 @@ class pdoext_TableGateway
     $values = Array();
     foreach ($condition as $column => $value) {
       $where[] = $this->db->quoteName($column)." = :".$column;
-      $values[$column] = $value;
+      $values[":".$column] = $value;
     }
     if (count($where) == 0) {
       throw new Exception("No conditions given for delete");
