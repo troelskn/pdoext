@@ -3,9 +3,14 @@
   */
 class pdoext_query_Criterion implements pdoext_query_ICriterion
 {
+  /** Compare litteral to litteral */
   const QUOTE_NONE = 0;
+  /** Compare field to constant value */
   const QUOTE_VALUE = 1;
+  /** Compare field to field */
   const QUOTE_FIELD = 2;
+  /** Compare field to litteral */
+  const QUOTE_LITTERAL = 4;
 
   protected $column;
   protected $value;
@@ -38,7 +43,7 @@ class pdoext_query_Criterion implements pdoext_query_ICriterion
         } else if (is_array($this->value)) {
           $sql .= " IN ";
         } else {
-          $sql .= $comparator;
+          $sql .= " $comparator";
         }
       } else if ($comparator == "!=") {
         if (is_null($this->value)) {
@@ -46,12 +51,12 @@ class pdoext_query_Criterion implements pdoext_query_ICriterion
         } else if (is_array($this->value)) {
           $sql .= " NOT IN ";
         } else {
-          $sql .= $comparator;
+          $sql .= " $comparator";
         }
       } else if ($comparator == "LIKE") {
         return "$sql $comparator ".$connection->escapeLike($this->value);
       } else {
-        $sql .= $comparator;
+        $sql .= " $comparator";
       }
       if (is_array($this->value)) {
         $a = Array();

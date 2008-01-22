@@ -84,6 +84,18 @@ class TestOfQuery extends UnitTestCase
     $sub->addCriterion('first_name', "Jim");
     $this->assertSqlEqual($q->toSql(), "select * from `people` where (`first_name` = 'John' OR `first_name` = 'Jim')");
   }
+
+  function test_quote_styles() {
+    $db = $this->getConnection();
+    $crit = new pdoext_query_Criterion('foo', 'bar', ' = ', pdoext_query_Criterion::QUOTE_NONE);
+    $this->assertEqual($crit->toSQL($db), "foo = bar");
+    $crit = new pdoext_query_Criterion('foo', 'bar', ' = ', pdoext_query_Criterion::QUOTE_VALUE);
+    $this->assertEqual($crit->toSQL($db), "\"foo\" = 'bar'");
+    $crit = new pdoext_query_Criterion('foo', 'bar', ' = ', pdoext_query_Criterion::QUOTE_FIELD);
+    $this->assertEqual($crit->toSQL($db), "\"foo\" = \"bar\"");
+    $crit = new pdoext_query_Criterion('foo', 'bar', ' = ', pdoext_query_Criterion::QUOTE_LITTERAL);
+    $this->assertEqual($crit->toSQL($db), "\"foo\" = bar");
+  }
 }
 
 simpletest_autorun(__FILE__);
