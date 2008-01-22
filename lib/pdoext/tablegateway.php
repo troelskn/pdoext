@@ -25,7 +25,7 @@ class pdoext_TableGateway
     if (is_array($object)) {
       return $object;
     }
-    if ($object instanceOf ArrayObject) {
+    if ($object instanceOf ArrayAccess) {
       return $object->getArrayCopy();
     }
     throw new Exception("Unable to marshal object into hash.");
@@ -111,7 +111,8 @@ class pdoext_TableGateway
     }
     $query .= " (".implode(",", array_map(Array($this->db, 'quoteName'), $columns)).")";
     $query .= " VALUES (:".implode(", :", $columns).")";
-    return $this->db->pexecute($query, $values);
+    $this->db->pexecute($query, $values);
+    return $this->db->lastInsertId();
   }
 
   /**

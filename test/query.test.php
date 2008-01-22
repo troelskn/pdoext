@@ -31,6 +31,18 @@ class TestOfQuery extends UnitTestCase
       "select * from people where first_name = 'John'");
   }
 
+  function test_quote_styles() {
+    $db = $this->getConnection();
+    $crit = new pdoext_query_Criterion('foo', 'bar', ' = ', pdoext_query_Criterion::QUOTE_NONE);
+    $this->assertEqual($crit->toSQL($db), "foo = bar");
+    $crit = new pdoext_query_Criterion('foo', 'bar', ' = ', pdoext_query_Criterion::QUOTE_VALUE);
+    $this->assertEqual($crit->toSQL($db), "\"foo\" = 'bar'");
+    $crit = new pdoext_query_Criterion('foo', 'bar', ' = ', pdoext_query_Criterion::QUOTE_FIELD);
+    $this->assertEqual($crit->toSQL($db), "\"foo\" = \"bar\"");
+    $crit = new pdoext_query_Criterion('foo', 'bar', ' = ', pdoext_query_Criterion::QUOTE_LITTERAL);
+    $this->assertEqual($crit->toSQL($db), "\"foo\" = bar");
+  }
+
   function test_select_where() {
     $db = $this->getConnection();
     $q = new pdoext_Query($db, 'people');
@@ -85,17 +97,29 @@ class TestOfQuery extends UnitTestCase
     $this->assertSqlEqual($q->toSql(), "select * from `people` where (`first_name` = 'John' OR `first_name` = 'Jim')");
   }
 
-  function test_quote_styles() {
+  function test_select_complex_query() {
     $db = $this->getConnection();
-    $crit = new pdoext_query_Criterion('foo', 'bar', ' = ', pdoext_query_Criterion::QUOTE_NONE);
-    $this->assertEqual($crit->toSQL($db), "foo = bar");
-    $crit = new pdoext_query_Criterion('foo', 'bar', ' = ', pdoext_query_Criterion::QUOTE_VALUE);
-    $this->assertEqual($crit->toSQL($db), "\"foo\" = 'bar'");
-    $crit = new pdoext_query_Criterion('foo', 'bar', ' = ', pdoext_query_Criterion::QUOTE_FIELD);
-    $this->assertEqual($crit->toSQL($db), "\"foo\" = \"bar\"");
-    $crit = new pdoext_query_Criterion('foo', 'bar', ' = ', pdoext_query_Criterion::QUOTE_LITTERAL);
-    $this->assertEqual($crit->toSQL($db), "\"foo\" = bar");
+    $q = new pdoext_Query($db, 'people');
+    $q->addColumn("first_name");
+    $q->setLimit(10);
+    $q->setOffset(10);
+    $j = $q->addJoin('accounts', 'LEFT JOIN');
+    $sub = $j->addCriterion(new pdoext_query_Criteria("OR"));
+    $sub->addConstraint('people.account_id', 'accounts.account_id');
+    $sub->addCriterion('people.account_id', 28, '>');
+    $q->addCriterion('first_name', "John");
+
+    $this->assertSqlEqual($q->toSql(), "
+select `first_name`
+from `people`
+left join `accounts`
+on `people`.`account_id` = `accounts`.`account_id` or `people`.`account_id` > '28'
+where `first_name` = 'John'
+limit 10
+offset 10
+");
   }
+
 }
 
 simpletest_autorun(__FILE__);

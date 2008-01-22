@@ -58,13 +58,29 @@ class pdoext_Connection extends PDO
   }
 
   /**
+    * Workaround for bug in PDO:
+    *   http://bugs.php.net/bug.php?id=41698
+    */
+  protected function castInputParams($input) {
+    $safe = Array();
+    foreach ($input as $key => $value) {
+      if (is_float($value)) {
+        $safe[$key] = number_format($value, 2, '.', '');
+      } else {
+        $safe[$key] = $value;
+      }
+    }
+    return $safe;
+  }
+
+  /**
     * Prepares a query, binds parameters, and executes it.
     * If you're going to run the query multiple times, it's faster to prepare once, and reuse the statement.
     */
   public function pexecute($sql, $input_params = NULL) {
     $stmt = $this->prepare($sql);
     if (is_array($input_params)) {
-      $stmt->execute($input_params);
+      $stmt->execute($this->castInputParams($input_params));
     } else {
       $stmt->execute();
     }
@@ -127,7 +143,7 @@ class pdoext_Connection extends PDO
   }
 
   /**
-    * Escapes a like-lauses accordin to the rdbms syntax.
+    * Escapes a like-clauses according to the rdbms syntax.
     */
   public function escapeLike($value, $wildcart = "*") {
     return str_replace($wildcart, "%", $this->quote($value));

@@ -85,7 +85,7 @@ class pdoext_Query extends pdoext_query_Criteria
     $this->offset = $offset;
   }
 
-  public function setSqlCalcFoundRows($value) {
+  public function setSqlCalcFoundRows($value = TRUE) {
     $this->sql_calc_found_rows = $value;
   }
 
