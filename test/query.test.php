@@ -39,7 +39,7 @@ class TestOfQuery extends UnitTestCase
     $this->assertEqual($crit->toSQL($db), "\"foo\" = 'bar'");
     $crit = new pdoext_query_Criterion('foo', 'bar', ' = ', pdoext_query_Criterion::QUOTE_FIELD);
     $this->assertEqual($crit->toSQL($db), "\"foo\" = \"bar\"");
-    $crit = new pdoext_query_Criterion('foo', 'bar', ' = ', pdoext_query_Criterion::QUOTE_LITTERAL);
+    $crit = new pdoext_query_Criterion('foo', 'bar', ' = ', pdoext_query_Criterion::QUOTE_LITERAL);
     $this->assertEqual($crit->toSQL($db), "\"foo\" = bar");
   }
 

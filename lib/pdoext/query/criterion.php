@@ -3,14 +3,14 @@
   */
 class pdoext_query_Criterion implements pdoext_query_ICriterion
 {
-  /** Compare litteral to litteral */
+  /** Compare literal to literal */
   const QUOTE_NONE = 0;
   /** Compare field to constant value */
   const QUOTE_VALUE = 1;
   /** Compare field to field */
   const QUOTE_FIELD = 2;
-  /** Compare field to litteral */
-  const QUOTE_LITTERAL = 4;
+  /** Compare field to literal */
+  const QUOTE_LITERAL = 4;
 
   protected $column;
   protected $value;
