@@ -36,24 +36,24 @@ class pdoext_query_Criterion implements pdoext_query_ICriterion
 
     if ($this->quoteType == self::QUOTE_FIELD) {
       return "$sql $comparator ".$connection->quoteName($this->value);
-    } else if ($this->quoteType == self::QUOTE_VALUE) {
+    } elseif ($this->quoteType == self::QUOTE_VALUE) {
       if ($comparator == "=") {
         if (is_null($this->value)) {
           return $sql." IS NULL";
-        } else if (is_array($this->value)) {
+        } elseif (is_array($this->value)) {
           $sql .= " IN ";
         } else {
           $sql .= " $comparator";
         }
-      } else if ($comparator == "!=") {
+      } elseif ($comparator == "!=") {
         if (is_null($this->value)) {
           return $sql." IS NOT NULL";
-        } else if (is_array($this->value)) {
+        } elseif (is_array($this->value)) {
           $sql .= " NOT IN ";
         } else {
           $sql .= " $comparator";
         }
-      } else if ($comparator == "LIKE") {
+      } elseif ($comparator == "LIKE") {
         return "$sql $comparator ".$connection->escapeLike($this->value);
       } else {
         $sql .= " $comparator";
@@ -66,6 +66,15 @@ class pdoext_query_Criterion implements pdoext_query_ICriterion
         return $sql."(".implode(',', $a).")";
       }
       return "$sql ".$connection->quote($this->value);
+    } elseif ($this->quoteType == self::QUOTE_LITERAL && is_array($this->value)) {
+      if ($comparator == "=") {
+        $sql .= " IN ";
+      } elseif ($comparator == "!") {
+        $sql .= " NOT IN ";
+      } else {
+        $sql .= " $comparator ";
+      }
+      return $sql."(".implode(',', $this->value).")";
     }
     return "$sql $comparator ".$this->value;
   }

@@ -17,8 +17,8 @@ class simpletest_autorun_TextReporter extends TextReporter
   var $is_verbose = FALSE;
   var $begin_time = NULL;
 
-  function simpletest_autorun_TextReporter($is_verbose = FALSE) {
-    parent::TextReporter();
+  function __construct($is_verbose = FALSE) {
+    parent::__construct();
     $this->is_verbose = $is_verbose;
   }
 
@@ -165,12 +165,12 @@ function simpletest_autorun($filename) {
     $options = $_GET;
   }
   // set_time_limit(0);
-  $test = new GroupTest("Automatic Test Runner");
+  $test = new TestSuite("Automatic Test Runner");
   $testKlass = new ReflectionClass("SimpleTestCase");
   foreach (get_declared_classes() as $classname) {
     $klass = new ReflectionClass($classname);
     if ($klass->isSubclassOf($testKlass) && in_array($klass->getFileName(), $filename)) {
-      $test->addTestCase(new $classname());
+      $test->add(new $classname());
     }
   }
   $is_verbose = isset($options['v']) || isset($options['verbose']);

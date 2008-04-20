@@ -31,6 +31,16 @@ class TestOfQuery extends UnitTestCase
       "select * from people where first_name = 'John'");
   }
 
+  function test_literal_quote_array_of_symbols() {
+    $db = $this->getConnection();
+    $crit = new pdoext_query_Criterion(
+      'first_name',
+      array(':first_name_0', ':first_name_1', ':first_name_2'),
+      '=',
+      pdoext_query_Criterion::QUOTE_LITERAL);
+    $this->assertEqual($crit->toSQL($db), "\"first_name\" IN (:first_name_0,:first_name_1,:first_name_2)");
+  }
+
   function test_quote_styles() {
     $db = $this->getConnection();
     $crit = new pdoext_query_Criterion('foo', 'bar', ' = ', pdoext_query_Criterion::QUOTE_NONE);
