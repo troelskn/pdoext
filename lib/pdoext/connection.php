@@ -4,7 +4,7 @@
   * Adds a few helpers and patches differences between sqlite and mysql.
   * @license LGPL
   */
-class pdoext_Connection extends PDO
+class pdoext_Connection extends PDO implements pdoext_iConnection
 {
   protected $inTransaction = FALSE;
 

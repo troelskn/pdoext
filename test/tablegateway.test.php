@@ -1,6 +1,7 @@
 <?php
 require_once 'simpletest.inc.php';
 
+require_once '../lib/pdoext/iconnection.php';
 require_once '../lib/pdoext/connection.php';
 require_once '../lib/pdoext/tablegateway.php';
 require_once '../lib/pdoext/query/icriterion.php';
