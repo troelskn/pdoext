@@ -7,11 +7,12 @@
 interface pdoext_iConnection {
 
   // Inherited from PDO
-  // Since these methods are implemented internally, we can't declare their signature in an interface ...
-  public function prepare();
   public function beginTransaction();
   public function commit();
   public function rollback();
+  // The following methods can't be declared, since they are implemented internally in the PDO extension.
+  /*
+  public function prepare();
   public function setAttribute();
   public function exec();
   public function query();
@@ -20,6 +21,7 @@ interface pdoext_iConnection {
   public function errorInfo();
   public function getAttribute();
   public function quote();
+  */
 
   // New in pdoext
   public function pexecute($sql, $input_params = null);
