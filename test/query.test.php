@@ -30,7 +30,7 @@ class TestOfQuery extends UnitTestCase
 
   function test_sql_equal_assertion() {
     $this->assertSqlEqual(
-      "select * from people where first_name = 'John'",
+      "SELECT * FROM people WHERE first_name = 'John'",
       "select * from people where first_name = 'John'");
   }
 
