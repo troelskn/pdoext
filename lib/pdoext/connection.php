@@ -36,11 +36,11 @@ class pdoext_Connection extends PDO implements pdoext_iConnection
       case 'sqlite':
         $this->sqliteCreateAggregate(
           "group_concat",
-          Array($this, '__sqlite_group_concat_step'),
-          Array($this, '__sqlite_group_concat_finalize'),
+          array($this, '__sqlite_group_concat_step'),
+          array($this, '__sqlite_group_concat_finalize'),
           2
         );
-        $this->setAttribute(PDO::ATTR_STATEMENT_CLASS, Array('pdoext_SQLiteStatement'));
+        $this->setAttribute(PDO::ATTR_STATEMENT_CLASS, array('pdoext_SQLiteStatement'));
         // fallthru
 
       default:
@@ -62,7 +62,7 @@ class pdoext_Connection extends PDO implements pdoext_iConnection
     *   http://bugs.php.net/bug.php?id=41698
     */
   protected function castInputParams($input) {
-    $safe = Array();
+    $safe = array();
     foreach ($input as $key => $value) {
       if (is_float($value)) {
         $safe[$key] = number_format($value, 2, '.', '');
@@ -113,7 +113,7 @@ class pdoext_Connection extends PDO implements pdoext_iConnection
     }
     $result = parent::beginTransaction();
     $stack = debug_backtrace();
-    $this->inTransaction = Array($stack[0]['file'], $stack[0]['line']);
+    $this->inTransaction = array($stack[0]['file'], $stack[0]['line']);
     return $result;
   }
 
@@ -133,7 +133,7 @@ class pdoext_Connection extends PDO implements pdoext_iConnection
     * Escapes names (tables, columns etc.)
     */
   public function quoteName($name) {
-    $names = Array();
+    $names = array();
     foreach (explode(".", $name) as $name) {
       $names[] = $this->nameOpening
         .str_replace($this->nameClosing, $this->nameClosing.$this->nameClosing, $name)
@@ -157,9 +157,9 @@ class pdoext_Connection extends PDO implements pdoext_iConnection
       case 'mysql':
         $result = $this->query("SHOW COLUMNS FROM ".$this->quoteName($table));
         $result->setFetchMode(PDO::FETCH_ASSOC);
-        $meta = Array();
+        $meta = array();
         foreach ($result as $row) {
-          $meta[$row['Field']] = Array(
+          $meta[$row['Field']] = array(
             'pk' => $row['Key'] == 'PRI',
             'type' => $row['Type'],
           );
@@ -168,9 +168,9 @@ class pdoext_Connection extends PDO implements pdoext_iConnection
       case 'sqlite':
         $result = $this->query("PRAGMA table_info(".$this->quoteName($table).")");
         $result->setFetchMode(PDO::FETCH_ASSOC);
-        $meta = Array();
+        $meta = array();
         foreach ($result as $row) {
-          $meta[$row['name']] = Array(
+          $meta[$row['name']] = array(
             'pk' => $row['pk'] == '1',
             'type' => $row['type'],
           );
@@ -189,7 +189,7 @@ class pdoext_Connection extends PDO implements pdoext_iConnection
 class pdoext_SQLiteStatement extends PDOStatement
 {
   protected function fixQuoteBug($hash) {
-    $result = Array();
+    $result = array();
     foreach ($hash as $key => $value) {
       if (strpos($key, '"') === 0) {
         $result[substr($key, 1, -1)] = $value;
@@ -205,7 +205,7 @@ class pdoext_SQLiteStatement extends PDOStatement
   }
 
   function fetchAll($fetch_style = PDO::FETCH_BOTH) {
-    return array_map(Array($this, 'fixQuoteBug'), parent::fetchAll($fetch_style));
+    return array_map(array($this, 'fixQuoteBug'), parent::fetchAll($fetch_style));
   }
 }
 

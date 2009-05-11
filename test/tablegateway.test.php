@@ -21,7 +21,7 @@ class TestOfTableGatewayBasicUsecases extends UnitTestCase
        )'
     );
     $gateway = new pdoext_TableGateway('users', $connection);
-    $gateway->insert(Array('id' => 42, 'name' => 'John'));
+    $gateway->insert(array('id' => 42, 'name' => 'John'));
 
     $result = $connection->pexecute("SELECT COUNT(*) FROM users WHERE id = '42'");
     $row = $result->fetch();
@@ -29,7 +29,7 @@ class TestOfTableGatewayBasicUsecases extends UnitTestCase
 
     $result = $connection->pexecute("SELECT * FROM users WHERE id = '42'");
     $row = $result->fetch(PDO::FETCH_ASSOC);
-    $this->assertEqual($row, Array('id' => 42, 'name' => 'John'));
+    $this->assertEqual($row, array('id' => 42, 'name' => 'John'));
   }
 
   function test_insert_record_using_sequence_pkeys() {
@@ -41,13 +41,13 @@ class TestOfTableGatewayBasicUsecases extends UnitTestCase
        )'
     );
     $gateway = new pdoext_TableGateway('users', $connection);
-    $gateway->insert(Array('name' => 'John'));
-    $gateway->insert(Array('name' => 'Jim'));
+    $gateway->insert(array('name' => 'John'));
+    $gateway->insert(array('name' => 'Jim'));
     $all_users = $connection->pexecute("SELECT * FROM users")->fetchAll(PDO::FETCH_ASSOC);
 
-    $expected = Array(
-      Array('id' => 1, 'name' => 'John'),
-      Array('id' => 2, 'name' => 'Jim')
+    $expected = array(
+      array('id' => 1, 'name' => 'John'),
+      array('id' => 2, 'name' => 'Jim')
     );
     $this->assertEqual($all_users, $expected);
   }
@@ -62,7 +62,7 @@ class TestOfTableGatewayBasicUsecases extends UnitTestCase
     );
     $connection->exec("INSERT INTO users VALUES (42, 'John')");
     $gateway = new pdoext_TableGateway('users', $connection);
-    $gateway->delete(Array('id' => 42));
+    $gateway->delete(array('id' => 42));
 
     $result = $connection->pexecute("SELECT COUNT(*) FROM users WHERE name = 'John'");
     $row = $result->fetch();
@@ -79,7 +79,7 @@ class TestOfTableGatewayBasicUsecases extends UnitTestCase
     );
     $connection->exec("INSERT INTO users VALUES (42, 'John')");
     $gateway = new pdoext_TableGateway('users', $connection);
-    $gateway->update(Array('name' => 'Jim'), Array('id' => 42));
+    $gateway->update(array('name' => 'Jim'), array('id' => 42));
 
     $result = $connection->pexecute("SELECT COUNT(*) FROM users WHERE name = 'John'");
     $row = $result->fetch();
@@ -100,9 +100,9 @@ class TestOfTableGatewayBasicUsecases extends UnitTestCase
     );
     $connection->exec("INSERT INTO users VALUES (42, 'John')");
     $gateway = new pdoext_TableGateway('users', $connection);
-    $john = $gateway->fetch(Array('id' => 42));
+    $john = $gateway->fetch(array('id' => 42));
 
-    $this->assertEqual($john, Array('id' => 42, 'name' => 'John'));
+    $this->assertEqual($john, array('id' => 42, 'name' => 'John'));
   }
 }
 
@@ -116,13 +116,13 @@ class TestOfTableGateway extends UnitTestCase
          name VARCHAR(255)
        )'
     );
-    $john = new ArrayObject(Array('id' => 42, 'name' => 'John'));
+    $john = new arrayObject(array('id' => 42, 'name' => 'John'));
     $gateway = new pdoext_TableGateway('users', $connection);
     $gateway->insert($john);
 
     $result = $connection->pexecute("SELECT * FROM users WHERE id = '42'");
     $row = $result->fetch(PDO::FETCH_ASSOC);
-    $this->assertEqual($row, Array('id' => 42, 'name' => 'John'));
+    $this->assertEqual($row, array('id' => 42, 'name' => 'John'));
   }
 }
 

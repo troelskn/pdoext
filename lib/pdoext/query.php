@@ -4,8 +4,8 @@ class pdoext_Query extends pdoext_query_Criteria
   protected $connection;
 
   protected $table;
-  protected $columns = Array();
-  protected $joins = Array();
+  protected $columns = array();
+  protected $joins = array();
   protected $sql_calc_found_rows = FALSE;
 
   protected $order = null;
@@ -13,7 +13,7 @@ class pdoext_Query extends pdoext_query_Criteria
   protected $limit = null;
   protected $offset = null;
 
-  protected $groupby = Array();
+  protected $groupby = array();
 
   public function __construct(pdoext_Connection $connection, $table, $alias = NULL, $quote_name = TRUE, $sql_calc_found_rows = FALSE) {
     parent::__construct('AND');
@@ -128,7 +128,7 @@ class pdoext_Query extends pdoext_query_Criteria
 
     if ($this->order != "") {
       $sql .= "\nORDER BY ".$this->order;
-      if (in_array($this->direction, Array('ASC', 'DESC'))) {
+      if (in_array($this->direction, array('ASC', 'DESC'))) {
         $sql .= " ".$this->direction;
       }
     }

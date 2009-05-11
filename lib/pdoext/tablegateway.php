@@ -25,8 +25,8 @@ class pdoext_TableGateway
     if (is_array($object)) {
       return $object;
     }
-    if ($object instanceOf ArrayAccess) {
-      return $object->getArrayCopy();
+    if ($object instanceOf arrayAccess) {
+      return $object->getarrayCopy();
     }
     throw new Exception("Unable to marshal object into hash.");
   }
@@ -79,8 +79,8 @@ class pdoext_TableGateway
   function fetch($condition) {
     $condition = $this->marshal($condition);
     $query = "SELECT * FROM ".$this->db->quoteName($this->tableName);
-    $where = Array();
-    $values = Array();
+    $where = array();
+    $values = array();
     foreach ($condition as $column => $value) {
       $where[] = $this->db->quoteName($column)." = :".$column;
       $values[":".$column] = $value;
@@ -101,15 +101,15 @@ class pdoext_TableGateway
   function insert($data) {
     $data = $this->marshal($data);
     $query = "INSERT INTO ".$this->db->quoteName($this->tableName);
-    $columns = Array();
-    $values = Array();
+    $columns = array();
+    $values = array();
     foreach ($this->getColumns() as $column) {
       if (array_key_exists($column, $data)) {
         $columns[] = $column;
         $values[":".$column] = $data[$column];
       }
     }
-    $query .= " (".implode(",", array_map(Array($this->db, 'quoteName'), $columns)).")";
+    $query .= " (".implode(",", array_map(array($this->db, 'quoteName'), $columns)).")";
     $query .= " VALUES (:".implode(", :", $columns).")";
     $this->db->pexecute($query, $values);
     return $this->db->lastInsertId();
@@ -125,8 +125,8 @@ class pdoext_TableGateway
     $data = $this->marshal($data);
     $condition = $this->marshal($condition);
     $query = "UPDATE ".$this->db->quoteName($this->tableName)." SET";
-    $columns = Array();
-    $values = Array();
+    $columns = array();
+    $values = array();
     $pk = $this->getPKey();
     foreach ($this->getColumns() as $column) {
       if (array_key_exists($column, $data) && $column != $pk) {
@@ -135,7 +135,7 @@ class pdoext_TableGateway
       }
     }
     $query .= "\n    ".implode(",\n    ", $columns);
-    $where = Array();
+    $where = array();
     foreach ($condition as $column => $value) {
       $where[] = $this->db->quoteName($column)." = :where_".$column;
       $values[":where_".$column] = $value;
@@ -155,8 +155,8 @@ class pdoext_TableGateway
   function delete($condition) {
     $condition = $this->marshal($condition);
     $query = "DELETE FROM ".$this->db->quoteName($this->tableName);
-    $where = Array();
-    $values = Array();
+    $where = array();
+    $values = array();
     foreach ($condition as $column => $value) {
       $where[] = $this->db->quoteName($column)." = :".$column;
       $values[":".$column] = $value;

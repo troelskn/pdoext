@@ -59,7 +59,7 @@ class pdoext_query_Criterion implements pdoext_query_ICriterion
         $sql .= " $comparator";
       }
       if (is_array($this->value)) {
-        $a = Array();
+        $a = array();
         foreach ($this->value as $this->value) {
           $a[] = $connection->quote($this->value);
         }

@@ -2,7 +2,7 @@
 class pdoext_query_Criteria implements pdoext_query_ICriterion
 {
   protected $conjunction;
-  protected $criteria = Array();
+  protected $criteria = array();
 
   public function __construct($conjunction = 'OR') {
     $this->conjunction = " ".trim($conjunction)." ";
@@ -33,7 +33,7 @@ class pdoext_query_Criteria implements pdoext_query_ICriterion
     if (count($this->criteria) == 0) {
       return "";
     }
-    $criteria = Array();
+    $criteria = array();
     foreach ($this->criteria as $criterion) {
       $criteria[] = $criterion->toSQL($connection);
     }

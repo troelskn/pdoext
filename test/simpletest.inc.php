@@ -132,7 +132,7 @@ function simpletest_autorun($filename) {
     return;
   }
   if (!is_array($filename)) {
-    $filename = Array($filename);
+    $filename = array($filename);
   }
   error_reporting(E_ALL);
   if (SimpleReporter::inCli()) {

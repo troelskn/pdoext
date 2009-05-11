@@ -21,9 +21,11 @@ class TestOfQuery extends UnitTestCase
     $pdo->query("create table people ( first_name varchar(255), account_id integer )");
     $pdo->query("create table accounts ( account_id integer )");
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    return $this->assertEqual(
-      $pdo->query("EXPLAIN ".$sqlA)->fetchAll(PDO::FETCH_ASSOC),
-      $pdo->query("EXPLAIN ".$sqlB)->fetchAll(PDO::FETCH_ASSOC));
+    $a = $pdo->query("EXPLAIN ".$sqlA)->fetchAll(PDO::FETCH_ASSOC);
+    $b = $pdo->query("EXPLAIN ".$sqlB)->fetchAll(PDO::FETCH_ASSOC);
+    $a[0]['opcode'] == 'Trace' && $a[0]['p4'] = null;
+    $b[0]['opcode'] == 'Trace' && $b[0]['p4'] = null;
+    return $this->assertEqual($a, $b);
   }
 
   function test_sql_equal_assertion() {
@@ -64,7 +66,7 @@ class TestOfQuery extends UnitTestCase
   function test_select_where_in_array() {
     $db = $this->getConnection();
     $q = new pdoext_Query($db, 'people');
-    $q->addCriterion('first_name', Array("John", "Jim"));
+    $q->addCriterion('first_name', array("John", "Jim"));
     $this->assertSqlEqual($q->toSql(), "select * from `people` where `first_name` in ('John', 'Jim')");
   }
 
