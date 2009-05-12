@@ -23,9 +23,10 @@ class TestOfQuery extends UnitTestCase
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $a = $pdo->query("EXPLAIN ".$sqlA)->fetchAll(PDO::FETCH_ASSOC);
     $b = $pdo->query("EXPLAIN ".$sqlB)->fetchAll(PDO::FETCH_ASSOC);
+    $message = "\n------\n" . $a[0]['p4'] . "\n\n    differs from\n\n" . $b[0]['p4'] . "\n------\n";
     $a[0]['opcode'] == 'Trace' && $a[0]['p4'] = null;
     $b[0]['opcode'] == 'Trace' && $b[0]['p4'] = null;
-    return $this->assertEqual($a, $b);
+    return $this->assertEqual($a, $b, $message);
   }
 
   function test_sql_equal_assertion() {
@@ -131,6 +132,13 @@ where `first_name` = 'John'
 limit 10
 offset 10
 ");
+  }
+
+  function test_select_where_in_array_has_no_side_effects() {
+    $db = $this->getConnection();
+    $q = new pdoext_Query($db, 'people');
+    $q->addCriterion('first_name', array("John", "Jim"));
+    $this->assertSqlEqual($q->toSql(), $q->toSql());
   }
 
 }

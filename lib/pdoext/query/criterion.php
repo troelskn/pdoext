@@ -60,8 +60,8 @@ class pdoext_query_Criterion implements pdoext_query_ICriterion
       }
       if (is_array($this->value)) {
         $a = array();
-        foreach ($this->value as $this->value) {
-          $a[] = $connection->quote($this->value);
+        foreach ($this->value as $value) {
+          $a[] = $connection->quote($value);
         }
         return $sql."(".implode(',', $a).")";
       }
