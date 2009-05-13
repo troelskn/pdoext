@@ -48,6 +48,14 @@ class pdoext_Connection extends PDO {
     }
   }
 
+  public function exec($statement) {
+    return parent::exec($statement instanceOf pdoext_Query ? $statement->toSql($this) : $statement);
+  }
+
+  public function query($statement) {
+    return parent::query($statement instanceOf pdoext_Query ? $statement->toSql($this) : $statement);
+  }
+
   function __sqlite_group_concat_step($context, $idx, $string, $separator = ",") {
     return ($context) ? ($context . $separator . $string) : $string;
   }
