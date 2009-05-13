@@ -10,7 +10,7 @@ The rest of the library consists of an object oriented query building API, simil
 
 There is also a simple table data gateway, for basic CRUD operations.
 
-The table gateway and the query api does not depend on each other, so you can use them separately.
+The table gateway and the query api do not depend on each other, so you can use them separately.
 
 Below are some code samples, to give you an idea about the scope of the library:
 
@@ -19,9 +19,9 @@ Below are some code samples, to give you an idea about the scope of the library:
 ===Example 1: Simple select===
 {{{
 $db = new pdoext_Connection(...);
-$query = new pdoext_Query($db, "people");
+$query = new pdoext_Query("people");
 $query->addCriterion("first_name", "John");
-$db->query($query->toSQL());
+$db->query($query);
 }}}
 
 _Results in:_
@@ -32,7 +32,7 @@ select * from `people` where `first_name` = 'John'
 ===Example 2: Select with a left join and various options===
 {{{
 $db = new pdoext_Connection(...);
-$query = new pdoext_Query($db, "people");
+$query = new pdoext_Query("people");
 $query->addColumn("first_name");
 $query->setLimit(10);
 $query->setOffset(10);
@@ -41,7 +41,7 @@ $sub = $join->addCriterion(new pdoext_query_Criteria("OR"));
 $sub->addConstraint("people.account_id", "accounts.account_id");
 $sub->addCriterion("people.account_id", 28, ">");
 $query->addCriterion('first_name', "John");
-$db->query($query->toSQL());
+$db->query($query);
 }}}
 
 _Results in:_
@@ -67,7 +67,7 @@ CREATE TABLE users (
 ===Example 3: Insert a record===
 {{{
 $db = new pdoext_Connection(...);
-$users = new pdoext_TableGateway("users", $connection);
+$users = new pdoext_TableGateway("users", $db);
 $users->insert(array("id" => 42, "name" => "John"));
 }}}
 _The table now contains:_
