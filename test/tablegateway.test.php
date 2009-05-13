@@ -1,17 +1,18 @@
 <?php
-require_once 'simpletest.inc.php';
+error_reporting(E_ALL | E_STRICT);
+require_once 'simpletest/unit_tester.php';
+if (realpath($_SERVER['PHP_SELF']) == __FILE__) {
+  require_once 'simpletest/autorun.php';
+}
+set_include_path(
+  get_include_path() . PATH_SEPARATOR . dirname(__FILE__) . '/../lib/');
 
-require_once '../lib/pdoext/iconnection.php';
-require_once '../lib/pdoext/connection.php';
-require_once '../lib/pdoext/tablegateway.php';
-require_once '../lib/pdoext/query/icriterion.php';
-require_once '../lib/pdoext/query/criterion.php';
-require_once '../lib/pdoext/query/criteria.php';
-require_once '../lib/pdoext/query/join.php';
-require_once '../lib/pdoext/query.php';
+require_once 'pdoext.inc.php';
+require_once 'pdoext/connection.inc.php';
+require_once 'pdoext/query.inc.php';
+require_once 'pdoext/tablegateway.php';
 
-class TestOfTableGatewayBasicUsecases extends UnitTestCase
-{
+class TestOfTableGatewayBasicUsecases extends UnitTestCase {
   function test_insert_record() {
     $connection = new pdoext_Connection("sqlite::memory:");
     $connection->exec(
@@ -106,8 +107,7 @@ class TestOfTableGatewayBasicUsecases extends UnitTestCase
   }
 }
 
-class TestOfTableGateway extends UnitTestCase
-{
+class TestOfTableGateway extends UnitTestCase {
   function test_arrayobject_is_marshalled_to_hash() {
     $connection = new pdoext_Connection("sqlite::memory:");
     $connection->exec(
@@ -116,7 +116,7 @@ class TestOfTableGateway extends UnitTestCase
          name VARCHAR(255)
        )'
     );
-    $john = new arrayObject(array('id' => 42, 'name' => 'John'));
+    $john = new ArrayObject(array('id' => 42, 'name' => 'John'));
     $gateway = new pdoext_TableGateway('users', $connection);
     $gateway->insert($john);
 
@@ -125,5 +125,3 @@ class TestOfTableGateway extends UnitTestCase
     $this->assertEqual($row, array('id' => 42, 'name' => 'John'));
   }
 }
-
-simpletest_autorun(__FILE__);
