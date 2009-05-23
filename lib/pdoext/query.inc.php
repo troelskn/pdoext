@@ -202,10 +202,10 @@ class pdoext_Query extends pdoext_query_Criteria implements pdoext_query_iExpres
     return $union;
   }
   public function addUnionDistinct($mixed, $alias = null) {
-    return $this->addUnionDistinct($mixed, $alias, 'DISTINCT');
+    return $this->addUnion($mixed, $alias, 'DISTINCT');
   }
   public function addUnionAll($mixed, $alias = null) {
-    return $this->addUnionDistinct($mixed, $alias, 'ALL');
+    return $this->addUnion($mixed, $alias, 'ALL');
   }
   function addGroupBy($column) {
     $this->groupby[] = $column instanceof pdoext_query_iExpression ? $column : new pdoext_query_Field($column);
