@@ -162,6 +162,7 @@ class pdoext_Connection extends PDO {
           $meta[$row['Field']] = array(
             'pk' => $row['Key'] == 'PRI',
             'type' => $row['Type'],
+            'blob' => preg_match('/(TEXT|BLOB)/', $row['Type']),
           );
         }
         return $meta;
@@ -173,6 +174,7 @@ class pdoext_Connection extends PDO {
           $meta[$row['name']] = array(
             'pk' => $row['pk'] == '1',
             'type' => $row['type'],
+            'blob' => preg_match('/(TEXT|BLOB)/', $row['type']),
           );
         }
         return $meta;
