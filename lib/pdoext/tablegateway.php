@@ -28,10 +28,13 @@ class pdoext_TableGateway implements IteratorAggregate {
     if (is_array($object)) {
       return $object;
     }
-    if (is_object($object) && method_exists($object, 'getArrayCopy')) {
-      return $object->getArrayCopy();
+    if (is_object($object)) {
+      if (method_exists($object, 'getArrayCopy')) {
+        return $object->getArrayCopy();
+      }
+      return get_object_vars($object);
     }
-    throw new Exception("Unable to marshal object into hash.");
+    throw new Exception("Unable to marshal input into hash.");
   }
 
   /**
@@ -155,18 +158,26 @@ class pdoext_TableGateway implements IteratorAggregate {
   /**
    * Return a selection of all records
    */
-  function select($limit = null, $offset = 0) {
+  function select($limit = null, $offset = 0, $order = null, $direction = null) {
     $query = "SELECT * FROM " . $this->db->quoteName($this->tablename);
+    if ($order) {
+      $query .= "\nORDER BY " . $this->db->quoteName($order);
+      if ($direction) {
+        $query .= strtolower($direction) === 'desc' ? 'desc' : 'asc';
+      }
+    }
     if ($limit) {
-      $query .= "\nLIMIT " . $limit;
+      $query .= "\nLIMIT " . ((integer) $limit);
     }
     if ($offset) {
-      $query .= "\nOFFSET " . $offset;
+      $query .= "\nOFFSET " . ((integer) $offset);
     }
     $result = $this->db->query($query);
+    $result->setFetchMode(PDO::FETCH_ASSOC);
     if (method_exists($this, 'load')) {
+      return new pdoext_Resultset($result, $this);
       // TODO: Replace with a lazy iterator, to take benefit of buffered queries
-      return new ArrayIterator(array_map(array($this, 'load'), $result->fetchAll(PDO::FETCH_ASSOC)));
+      // return new ArrayIterator(array_map(array($this, 'load'), $result->fetchAll(PDO::FETCH_ASSOC)));
     }
     return $result;
   }
@@ -298,5 +309,38 @@ class pdoext_TableGateway implements IteratorAggregate {
     $query .= "\nWHERE\n    " . implode("\n    AND ", $where);
     $result = $this->db->pexecute($query, $bind);
     return $result->rowCount() > 0;
+  }
+}
+
+class pdoext_Resultset implements Iterator {
+  protected $cursor;
+  protected $loader;
+  protected $key = 0;
+  protected $current = null;
+  function __construct($cursor, $loader) {
+    $this->cursor = $cursor;
+    $this->loader = $loader;
+  }
+  protected function load($row) {
+    return $row ? $this->loader->load($row) : $row;
+  }
+  function current() {
+    return $this->current = $this->current === null ? $this->load($this->cursor->fetch(PDO::FETCH_ASSOC)) : $this->current;
+  }
+  function key() {
+    return $this->key;
+  }
+  function next() {
+    $this->key++;
+    $this->current = null;
+    return $this->current();
+  }
+  function rewind() {
+    if ($this->current !== null) {
+      throw new Exception("Can't rewind database resultset");
+    }
+  }
+  function valid() {
+    return $this->current() !== false;
   }
 }

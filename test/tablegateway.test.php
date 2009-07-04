@@ -107,6 +107,19 @@ class TestOfTableGatewayBasicUsecases extends UnitTestCase {
   }
 }
 
+class test_UsersGateway extends pdoext_TableGateway {
+  function __construct($connection) {
+    parent::__construct('users', $connection);
+  }
+  function load($row) {
+    $entity = new StdClass();
+    foreach ($row as $key => $value) {
+      $entity->$key = $value;
+    }
+    return $entity;
+  }
+}
+
 class TestOfTableGateway extends UnitTestCase {
   function test_arrayobject_is_marshalled_to_hash() {
     $connection = new pdoext_Connection("sqlite::memory:");
@@ -123,5 +136,24 @@ class TestOfTableGateway extends UnitTestCase {
     $result = $connection->pexecute("SELECT * FROM users WHERE id = '42'");
     $row = $result->fetch(PDO::FETCH_ASSOC);
     $this->assertEqual($row, array('id' => 42, 'name' => 'John'));
+  }
+  function test_can_select() {
+    $connection = new pdoext_Connection("sqlite::memory:");
+    $connection->exec(
+      'CREATE TABLE users (
+         id INTEGER PRIMARY KEY AUTOINCREMENT,
+         name VARCHAR(255)
+       )'
+    );
+    $gateway = new test_UsersGateway($connection);
+    $gateway->insert(array('name' => 'John'));
+    $gateway->insert(array('name' => 'Jim'));
+
+    $a = array();
+    foreach ($gateway->select() as $row) {
+      $a[] = $row;
+    }
+    $this->assertTrue($a[0] instanceOf StdClass);
+    $this->assertEqual("John", $a[0]->name);
   }
 }
