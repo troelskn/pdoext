@@ -188,8 +188,7 @@ class pdoext_Connection extends PDO {
   * Workaround for a bug in sqlite:
   *   http://www.sqlite.org/cvstrac/tktview?tn=2378
   */
-class pdoext_SQLiteStatement extends PDOStatement
-{
+class pdoext_SQLiteStatement extends PDOStatement {
   protected function fixQuoteBug($hash) {
     $result = array();
     foreach ($hash as $key => $value) {
@@ -203,7 +202,8 @@ class pdoext_SQLiteStatement extends PDOStatement
   }
 
   function fetch($fetch_style = PDO::FETCH_BOTH, $cursor_orientation = PDO::FETCH_ORI_NEXT, $cursor_offset = 1) {
-    return $this->fixQuoteBug(parent::fetch($fetch_style, $cursor_orientation, $cursor_offset));
+    $row = parent::fetch($fetch_style, $cursor_orientation, $cursor_offset);
+    return $row ? $this->fixQuoteBug($row) : $row;
   }
 
 
@@ -212,8 +212,7 @@ class pdoext_SQLiteStatement extends PDOStatement
   }
 }
 
-class pdoext_NoTransactionStartedException extends Exception
-{
+class pdoext_NoTransactionStartedException extends Exception {
   function __construct($message = "No transaction started", $code = 0) {
     parent::__construct($message, $code);
   }
@@ -221,8 +220,7 @@ class pdoext_NoTransactionStartedException extends Exception
 
 class pdoext_AlreadyInTransactionException extends Exception {}
 
-class pdoext_MetaNotSupportedException extends Exception
-{
+class pdoext_MetaNotSupportedException extends Exception {
   function __construct($message = "Meta querying not available for driver type", $code = 0) {
     parent::__construct($message, $code);
   }
