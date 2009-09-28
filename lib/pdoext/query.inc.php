@@ -166,6 +166,7 @@ class pdoext_Query extends pdoext_query_Criteria implements pdoext_query_iExpres
   protected $limit = null;
   protected $offset = null;
   protected $groupby = array();
+  protected $having = null;
   protected $sql_calc_found_rows = false;
   protected $straight_join = false;
 
@@ -208,7 +209,12 @@ class pdoext_Query extends pdoext_query_Criteria implements pdoext_query_iExpres
     return $this->addUnion($mixed, $alias, 'ALL');
   }
   function addGroupBy($column) {
-    $this->groupby[] = $column instanceof pdoext_query_iExpression ? $column : new pdoext_query_Field($column);
+    $groupby = $column instanceof pdoext_query_iExpression ? $column : new pdoext_query_Field($column);
+    $this->groupby[] = $groupby;
+    return $groupby;
+  }
+  function setHaving($left, $right = null, $comparator = '=') {
+    return $this->having = $left instanceof pdoext_query_iCriteron ? $left : new pdoext_query_Criterion($left, $right, $comparator);
   }
   function addColumn($column, $alias = null) {
     $this->columns[] = array(
@@ -287,10 +293,17 @@ class pdoext_Query extends pdoext_query_Criteria implements pdoext_query_iExpres
       $sql = $sql . "\nWHERE\n" . pdoext_string_indent(parent::toSql($db));
     }
     if (count($this->groupby) > 0) {
-      $sql .= "\nGROUP BY\n" . pdoext_string_indent(implode(",\n", $this->groupby));
+      $tmp = array();
+      foreach ($this->groupby as $groupby) {
+        $tmp[] = $groupby->toSql($db);
+      }
+      $sql .= "\nGROUP BY\n" . pdoext_string_indent(implode(",\n", $tmp));
+      if ($this->having) {
+        $sql .= "\nHAVING\n" . pdoext_string_indent($this->having->toSql($db));
+      }
     }
     foreach ($this->unions as $union) {
-      $sql .= "\nUNION " . $union[1] . "\n" . $union[0]->toSQL($db);
+      $sql .= "\nUNION " . ($union[1] === 'DISTINCT' ? '' : $union[1]) . "\n" . $union[0]->toSQL($db);
     }
     if (count($this->order) > 0) {
       $order = array();

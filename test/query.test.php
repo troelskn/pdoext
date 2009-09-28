@@ -111,6 +111,35 @@ class TestOfQuery extends UnitTestCase {
     $this->assertSqlEqual($q->toSql($db), "select * from `people` where (`first_name` = 'John' OR `first_name` = 'Jim')");
   }
 
+  function test_select_group_by() {
+    $db = $this->getConnection();
+    $q = pdoext_query('people');
+    $q->addGroupBy('first_name');
+    $this->assertSqlEqual($q->toSql($db), "select * from `people` group by `first_name`");
+  }
+
+  function test_select_group_by_with_having() {
+    $db = $this->getConnection();
+    $q = pdoext_query('people');
+    $q->addGroupBy('first_name');
+    $q->setHaving('first_name', 'John');
+    $this->assertSqlEqual($q->toSql($db), "select * from `people` group by `first_name` having `first_name` = 'John'");
+  }
+
+  function test_select_union() {
+    $db = $this->getConnection();
+    $q = pdoext_query('people');
+    $q->addUnion(pdoext_query('people'));
+    $this->assertSqlEqual($q->toSql($db), "select * from `people` union select * from `people`");
+  }
+
+  function test_select_union_all() {
+    $db = $this->getConnection();
+    $q = pdoext_query('people');
+    $q->addUnionAll(pdoext_query('people'));
+    $this->assertSqlEqual($q->toSql($db), "select * from `people` union all select * from `people`");
+  }
+
   function test_select_complex_query() {
     $db = $this->getConnection();
     $q = new pdoext_Query('people');
