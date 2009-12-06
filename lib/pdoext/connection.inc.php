@@ -51,7 +51,9 @@ class pdoext_Connection extends PDO {
 
   public function setLogTarget($logTarget = 'php://stdout') {
     $this->logTarget = $logTarget;
-    $this->setAttribute(PDO::ATTR_STATEMENT_CLASS, array('pdoext_LoggingStatement'));
+    if ($this->getAttribute(PDO::ATTR_DRIVER_NAME) !== 'sqlite') {
+      $this->setAttribute(PDO::ATTR_STATEMENT_CLASS, array('pdoext_LoggingStatement'));
+    }
   }
 
   protected function log($sql, $from) {
