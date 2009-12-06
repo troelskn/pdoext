@@ -254,7 +254,7 @@ class pdoext_TableGateway implements IteratorAggregate {
     } else {
       throw new Exception("No conditions given and PK is missing for update");
     }
-    $query = "UPDATE " . $this->db->quoteName($this->tablename) . " SET";
+    $query = "UPDATE " . $this->db->quoteName($this->tablename) . "\nSET";
     $columns = array();
     $bind = array();
     foreach ($this->getColumns() as $column) {
@@ -268,7 +268,7 @@ class pdoext_TableGateway implements IteratorAggregate {
         }
       }
     }
-    $query .= "\n    " . implode(",\n    ", $columns);
+    $query .= "\n  " . implode(",\n  ", $columns);
     $where = array();
     foreach ($condition as $column => $value) {
       if ($value instanceOf pdoext_query_iExpression) {
@@ -281,7 +281,7 @@ class pdoext_TableGateway implements IteratorAggregate {
     if (count($where) === 0) {
       throw new Exception("No conditions given for update");
     }
-    $query .= "\nWHERE\n    " . implode("\n    AND ", $where);
+    $query .= "\nWHERE\n  " . implode("\n  AND ", $where);
     return $this->db->pexecute($query, $bind);
   }
 
