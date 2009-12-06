@@ -5,6 +5,7 @@
   * @license LGPL
   */
 class pdoext_Connection extends PDO {
+  protected $logTarget = null;
   protected $inTransaction = false;
 
   protected $nameOpening;
@@ -48,12 +49,26 @@ class pdoext_Connection extends PDO {
     }
   }
 
+  public function setLogTarget($logTarget = 'php://stdout') {
+    $this->logTarget = $logTarget;
+    $this->setAttribute(PDO::ATTR_STATEMENT_CLASS, array('pdoext_LoggingStatement'));
+  }
+
+  protected function log($sql, $from) {
+    if ($this->logTarget) {
+      error_log("[" . date("Y-m-d H:i:s") . "] from $from\n" . $sql . "\n---\n", 3, $this->logTarget);
+    }
+    return $sql;
+  }
+
   public function exec($statement) {
-    return parent::exec($statement instanceOf pdoext_Query ? $statement->toSql($this) : $statement);
+    return parent::exec(
+      $this->log($statement instanceOf pdoext_Query ? $statement->toSql($this) : $statement, __FUNCTION__));
   }
 
   public function query($statement) {
-    return parent::query($statement instanceOf pdoext_Query ? $statement->toSql($this) : $statement);
+    return parent::query(
+      $this->log($statement instanceOf pdoext_Query ? $statement->toSql($this) : $statement, __FUNCTION__));
   }
 
   function __sqlite_group_concat_step($context, $idx, $string, $separator = ",") {
@@ -78,6 +93,14 @@ class pdoext_Connection extends PDO {
       }
     }
     return $safe;
+  }
+
+  public function prepare($sql, $options = array()) {
+    $stmt = parent::prepare($sql, $options);
+    if ($this->logTarget) {
+      $stmt->setLogging($this->logTarget, $sql);
+    }
+    return $stmt;
   }
 
   /**
@@ -184,11 +207,26 @@ class pdoext_Connection extends PDO {
   }
 }
 
+class pdoext_LoggingStatement extends PDOStatement {
+  protected $logTarget;
+  protected $sql;
+  public function setLogging($logTarget, $sql) {
+    $this->logTarget = $logTarget;
+    $this->sql = $sql;
+  }
+  public function execute($input_parameters = array()) {
+    if ($this->logTarget) {
+      error_log("[" . date("Y-m-d H:i:s") . "] from Statement#execute\n" . $this->sql . "\n" . var_export($input_parameters, true) . "\n---\n", 3, $this->logTarget);
+    }
+    return parent::execute($input_parameters);
+  }
+}
+
 /**
   * Workaround for a bug in sqlite:
   *   http://www.sqlite.org/cvstrac/tktview?tn=2378
   */
-class pdoext_SQLiteStatement extends PDOStatement {
+class pdoext_SQLiteStatement extends pdoext_LoggingStatement {
   protected function fixQuoteBug($hash) {
     $result = array();
     foreach ($hash as $key => $value) {
