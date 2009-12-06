@@ -56,21 +56,21 @@ class pdoext_Connection extends PDO {
     }
   }
 
-  protected function log($sql, $from) {
+  protected function log($sql) {
     if ($this->logTarget) {
-      error_log("[" . date("Y-m-d H:i:s") . "] from $from\n" . $sql . "\n---\n", 3, $this->logTarget);
+      error_log("[" . date("Y-m-d H:i:s") . "] from " . pdoext_find_caller() . "\n---\n" . $sql . "\n---\n", 3, $this->logTarget);
     }
     return $sql;
   }
 
   public function exec($statement) {
     return parent::exec(
-      $this->log($statement instanceOf pdoext_Query ? $statement->toSql($this) : $statement, __FUNCTION__));
+      $this->log($statement instanceOf pdoext_Query ? $statement->toSql($this) : $statement));
   }
 
   public function query($statement) {
     return parent::query(
-      $this->log($statement instanceOf pdoext_Query ? $statement->toSql($this) : $statement, __FUNCTION__));
+      $this->log($statement instanceOf pdoext_Query ? $statement->toSql($this) : $statement));
   }
 
   function __sqlite_group_concat_step($context, $idx, $string, $separator = ",") {
@@ -209,6 +209,28 @@ class pdoext_Connection extends PDO {
   }
 }
 
+function pdoext_find_caller($skip = '/^pdoext_/i') {
+  foreach (debug_backtrace() as $frame) {
+    if (isset($frame['object'])) {
+      $name = get_class($frame['object']);
+    } elseif (isset($frame['class'])) {
+      $name = $frame['class'];
+    } else {
+      $name = '';
+    }
+    if (isset($frame['function'])) {
+      $name = ($name ? "$name#" : $name) . $frame['function'];
+    }
+    if (!preg_match($skip, $name)) {
+      if (isset($frame['file'], $frame['line'])) {
+        return $name . " in [" . $frame['file'] . " " . $frame['line'] . "]";
+      }
+      return $name;
+    }
+  }
+  return '{unknown}';
+}
+
 class pdoext_LoggingStatement extends PDOStatement {
   protected $logTarget;
   protected $sql;
@@ -218,7 +240,7 @@ class pdoext_LoggingStatement extends PDOStatement {
   }
   public function execute($input_parameters = array()) {
     if ($this->logTarget) {
-      error_log("[" . date("Y-m-d H:i:s") . "] from Statement#execute\n" . $this->sql . "\n" . var_export($input_parameters, true) . "\n---\n", 3, $this->logTarget);
+      error_log("[" . date("Y-m-d H:i:s") . "] from " . pdoext_find_caller() . "\n---\n" . $this->sql . "\n---\n" . var_export($input_parameters, true) . "\n---\n", 3, $this->logTarget);
     }
     return parent::execute($input_parameters);
   }
