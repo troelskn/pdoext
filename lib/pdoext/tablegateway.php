@@ -100,16 +100,18 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
    * Resets errors for an entity.
    * You can override this, if you want to report errors in a different way.
    */
-  protected function clear_errors($entity) {
-    $entity->errors = array();
+  protected function clearErrors($entity) {
+    if (is_object($entity)) {
+      $entity->errors = array();
+    }
   }
 
   /**
    * Determines if there are any errors for an entity.
    * You can override this, if you want to report errors in a different way.
    */
-  protected function has_errors($entity) {
-    return is_array($entity->errors) && count($entity->errors) > 0;
+  protected function hasErrors($entity) {
+    return is_object($entity) && is_array($entity->errors) && count($entity->errors) > 0;
   }
 
   /**
@@ -122,13 +124,13 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
    * Hook for validating before update.
    * Set errors on `$data->errors` to abort.
    */
-  protected function validate_update($data) {}
+  protected function validateUpdate($data) {}
 
   /**
    * Hook for validating before insert
    * Set errors on `$data->errors` to abort.
    */
-  protected function validate_insert($data) {}
+  protected function validateInsert($data) {}
 
   /**
    * Selects a single row from the table.
@@ -204,12 +206,10 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
    * @return boolean
    */
   function insert($entity) {
-    if (is_object($entity)) {
-      $this->clear_errors($entity);
-    }
-    $this->validate_insert($entity);
+    $this->clearErrors($entity);
+    $this->validateInsert($entity);
     $this->validate($entity);
-    if (is_object($entity) && $this->has_errors($entity)) {
+    if ($this->hasErrors($entity)) {
       return null;
     }
     $data = $this->marshal($entity);
@@ -243,12 +243,10 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
    * @return boolean
    */
   function update($entity, $condition = null) {
-    if (is_object($entity)) {
-      $this->clear_errors($entity);
-    }
-    $this->validate_update($entity);
+    $this->clearErrors($entity);
+    $this->validateUpdate($entity);
     $this->validate($entity);
-    if (is_object($entity) && $this->has_errors($entity)) {
+    if ($this->hasErrors($entity)) {
       return false;
     }
     $data = $this->marshal($entity);
