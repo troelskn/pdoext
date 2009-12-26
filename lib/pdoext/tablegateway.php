@@ -2,7 +2,7 @@
   /**
    * A generic table gateway.
    */
-class pdoext_TableGateway implements IteratorAggregate {
+class pdoext_TableGateway implements IteratorAggregate, Countable {
   protected $tablename;
   protected $pkey;
 
