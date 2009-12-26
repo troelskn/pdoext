@@ -4,7 +4,7 @@
    */
 class pdoext_TableGateway implements IteratorAggregate, Countable {
   protected $tablename;
-  protected $pkey;
+  protected $pkey = -1;
 
   protected $db;
   protected $columns = null;
@@ -17,7 +17,6 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
   function __construct($tablename, pdoext_Connection $db) {
     $this->tablename = $tablename;
     $this->db = $db;
-    $this->pkey = $this->getPKey();
   }
 
   function getIterator() {
@@ -51,9 +50,16 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
   /**
    * Returns the PK column.
    * Note that this pre-supposes that the primary key is a single column, which may not always be the case.
-   * @return hash
+   * @return mixed
    */
   function getPKey() {
+    if ($this->pkey === -1) {
+      $this->pkey = $this->_getPKey();
+    }
+    return $this->pkey;
+  }
+
+  protected function _getPKey() {
     foreach ($this->reflect() as $column => $info) {
       if ($info['pk']) {
         return $column;
