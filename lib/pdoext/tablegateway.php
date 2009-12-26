@@ -367,7 +367,7 @@ class pdoext_PaginatedSelection extends pdoext_Query implements IteratorAggregat
     $this->db = $db;
     $this->setSqlCalcFoundRows();
     $this->setLimit($page_size);
-    $this->setOffset(($current_page - 1) * $page_size);
+    $this->setOffset(max($current_page - 1, 0) * $page_size);
   }
   function count() {
     $this->executeQuery();
