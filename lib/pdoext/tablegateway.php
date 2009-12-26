@@ -23,6 +23,13 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
     return $this->select();
   }
 
+  /**
+   * Creates a selection query.
+   */
+  function selectPaginated($current_page = 1, $page_size = 10) {
+    return new pdoext_PaginatedSelection($this, $this->db, $current_page, $page_size);
+  }
+
   protected function marshal($object) {
     if (is_array($object)) {
       return $object;
@@ -346,5 +353,42 @@ class pdoext_Resultset implements Iterator {
   }
   function valid() {
     return $this->current() !== false;
+  }
+}
+
+class pdoext_PaginatedSelection extends pdoext_Query implements IteratorAggregate, Countable {
+  protected $db;
+  protected $gateway;
+  protected $result;
+  protected $total_count;
+  function __construct(pdoext_TableGateway $gateway, pdoext_Connection $db, $current_page, $page_size = 10) {
+    parent::__construct($gateway->getTable());
+    $this->gateway = $gateway;
+    $this->db = $db;
+    $this->setSqlCalcFoundRows();
+    $this->setLimit($page_size);
+    $this->setOffset(($current_page - 1) * $page_size);
+  }
+  function count() {
+    $this->executeQuery();
+    return $this->total_count;
+  }
+  function getIterator() {
+    $this->executeQuery();
+    return $this->result;
+  }
+  protected function executeQuery() {
+    if (!$this->result) {
+      $result = $this->db->query($this);
+      $result->setFetchMode(PDO::FETCH_ASSOC);
+      if (method_exists($this->gateway, 'load')) {
+          $this->result = new pdoext_Resultset($result, $this->gateway);
+      } else {
+          $this->result = $result;
+      }
+      $result = $this->db->query("SELECT FOUND_ROWS()");
+      $row = $result->fetch();
+      $this->total_count = $row[0];
+    }
   }
 }
