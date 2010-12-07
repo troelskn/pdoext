@@ -73,9 +73,9 @@ Example 3: Insert a record
 
 _The table now contains:_
 
-| id | name |
-| -- | ---- |
-| 42 | John |
+id | name
+-- | ----
+42 | John
 
 Example 4: Update a record
 --
@@ -85,9 +85,9 @@ Example 4: Update a record
 
 _The table now contains:_
 
-| id | name |
-| -- | ---- |
-| 42 | Jim  |
+id | name
+-- | ----
+42 | Jim
 
 
 Example 5: Fetch a single record
