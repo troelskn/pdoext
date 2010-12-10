@@ -10,7 +10,7 @@ set_include_path(
 require_once 'pdoext.inc.php';
 require_once 'pdoext/connection.inc.php';
 require_once 'pdoext/query.inc.php';
-require_once 'pdoext/tablegateway.php';
+require_once 'pdoext/tablegateway.inc.php';
 
 class TestOfTableGatewayBasicUsecases extends UnitTestCase {
   function test_insert_record() {
