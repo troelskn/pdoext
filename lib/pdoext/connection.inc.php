@@ -49,6 +49,10 @@ class pdoext_Connection extends PDO {
     }
   }
 
+  public function supportsSqlCalcFoundRows() {
+    return $this->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql';
+  }
+
   public function setLogTarget($logTarget = 'php://stdout') {
     $this->logTarget = $logTarget;
     if ($this->getAttribute(PDO::ATTR_DRIVER_NAME) !== 'sqlite') {

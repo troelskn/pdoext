@@ -262,7 +262,7 @@ class pdoext_Query extends pdoext_query_Criteria implements pdoext_query_iExpres
   }
   function toSql($db) {
     $sql = 'SELECT';
-    if ($this->sql_calc_found_rows) {
+    if ($this->sql_calc_found_rows && $db->supportsSqlCalcFoundRows()) {
       $sql .= ' SQL_CALC_FOUND_ROWS';
     }
     if ($this->straight_join) {

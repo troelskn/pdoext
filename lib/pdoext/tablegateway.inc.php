@@ -403,8 +403,10 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate, Counta
     }
     if ($this->currentPage()) {
       $this->setSqlCalcFoundRows();
-      $this->setLimit($this->pageSize());
-      $this->setOffset(max($this->currentPage() - 1, 0) * $this->pageSize());
+      $limit = $this->pageSize();
+      $offset = max($this->currentPage() - 1, 0) * $this->pageSize();
+      $this->setLimit($limit);
+      $this->setOffset($offset);
     }
     $result = $this->db->query($this);
     $result->setFetchMode(PDO::FETCH_ASSOC);
@@ -414,9 +416,21 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate, Counta
       $this->result = $result;
     }
     if ($this->currentPage()) {
-      $result = $this->db->query("SELECT FOUND_ROWS()");
-      $row = $result->fetch();
-      $this->total_count = $row[0];
+      if ($this->db->supportsSqlCalcFoundRows()) { // MySql specific
+        $result = $this->db->query("SELECT FOUND_ROWS()");
+        $row = $result->fetch();
+        $this->total_count = $row[0];
+      } else { // fall back on select count(*)
+        $this->setLimit(null);
+        $this->setOffset(null);
+        $q = new pdoext_Query($this);
+        $q->addColumn(pdoext_literal('count(*)'), 'total_count');
+        $result = $this->db->query($q);
+        $row = $result->fetch();
+        $this->total_count = $row[0];
+        $this->setLimit($limit);
+        $this->setOffset($offset);
+      }
     }
   }
 }
