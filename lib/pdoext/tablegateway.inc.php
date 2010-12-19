@@ -24,10 +24,17 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
   }
 
   /**
+   * Selects a single entity by pk
+   */
+  function find($id) {
+    return $this->fetch(array($this->getPKey() => $id));
+  }
+
+  /**
    * Creates a selection query.
    */
-  function selectPaginated($current_page = 1, $page_size = 10) {
-    return new pdoext_PaginatedSelection($this, $this->db, $current_page, $page_size);
+  function query() {
+    return new pdoext_Selection($this, $this->db);
   }
 
   protected function marshal($object) {
@@ -356,18 +363,31 @@ class pdoext_Resultset implements Iterator {
   }
 }
 
-class pdoext_PaginatedSelection extends pdoext_Query implements IteratorAggregate, Countable {
+class pdoext_Selection extends pdoext_Query implements IteratorAggregate, Countable {
   protected $db;
   protected $gateway;
   protected $result;
-  protected $total_count;
-  function __construct(pdoext_TableGateway $gateway, pdoext_Connection $db, $current_page, $page_size = 10) {
+  protected $current_page;
+  protected $page_size;
+  function __construct(pdoext_TableGateway $gateway, pdoext_Connection $db) {
     parent::__construct($gateway->getTable());
     $this->gateway = $gateway;
     $this->db = $db;
-    $this->setSqlCalcFoundRows();
-    $this->setLimit($page_size);
-    $this->setOffset(max($current_page - 1, 0) * $page_size);
+  }
+  function paginate($current_page, $page_size = 10) {
+    $this->current_page = $current_page;
+    $this->page_size = $page_size;
+  }
+  function currentPage() {
+    return $this->current_page;
+  }
+  function pageSize() {
+    return $this->page_size;
+  }
+  function totalPages() {
+    if ($this->page_size) {
+      return floor($this->count() / $this->page_size);
+    }
   }
   function count() {
     $this->executeQuery();
@@ -378,14 +398,22 @@ class pdoext_PaginatedSelection extends pdoext_Query implements IteratorAggregat
     return $this->result;
   }
   protected function executeQuery() {
-    if (!$this->result) {
-      $result = $this->db->query($this);
-      $result->setFetchMode(PDO::FETCH_ASSOC);
-      if (method_exists($this->gateway, 'load')) {
-          $this->result = new pdoext_Resultset($result, $this->gateway);
-      } else {
-          $this->result = $result;
-      }
+    if ($this->result) {
+      return;
+    }
+    if ($this->currentPage()) {
+      $this->setSqlCalcFoundRows();
+      $this->setLimit($this->pageSize());
+      $this->setOffset(max($this->currentPage() - 1, 0) * $this->pageSize());
+    }
+    $result = $this->db->query($this);
+    $result->setFetchMode(PDO::FETCH_ASSOC);
+    if (method_exists($this->gateway, 'load')) {
+      $this->result = new pdoext_Resultset($result, $this->gateway);
+    } else {
+      $this->result = $result;
+    }
+    if ($this->currentPage()) {
       $result = $this->db->query("SELECT FOUND_ROWS()");
       $row = $result->fetch();
       $this->total_count = $row[0];
