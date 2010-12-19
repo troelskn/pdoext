@@ -6,6 +6,7 @@
   */
 class pdoext_Connection extends PDO {
   protected $logTarget = null;
+  protected $slowLogOffset = null;
   protected $inTransaction = false;
 
   protected $nameOpening;
@@ -53,28 +54,38 @@ class pdoext_Connection extends PDO {
     return $this->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql';
   }
 
-  public function setLogTarget($logTarget = 'php://stdout') {
+  public function setLogTarget($logTarget = 'php://stdout', $slowLogOffset = null) {
     $this->logTarget = $logTarget;
+    $this->slowLogOffset = $slowLogOffset;
     if ($this->getAttribute(PDO::ATTR_DRIVER_NAME) !== 'sqlite') {
       $this->setAttribute(PDO::ATTR_STATEMENT_CLASS, array('pdoext_LoggingStatement'));
     }
   }
 
-  protected function log($sql) {
+  function log($sql, $t, $params = null) {
     if ($this->logTarget) {
-      error_log("[" . date("Y-m-d H:i:s") . "] from " . pdoext_find_caller() . "\n---\n" . $sql . "\n---\n", 3, $this->logTarget);
+      if ($this->slowLogOffset && $t < $this->slowLogOffset) {
+        return;
+      }
+      $more = $params ? ("\n---\n" . var_export($params, true)) : "";
+      error_log("[" . date("Y-m-d H:i:s") . "] [" . number_format($t / 1000, 4) . " s] from " . pdoext_find_caller() . "\n---\n" . $sql . $more . "\n---\n", 3, $this->logTarget);
     }
-    return $sql;
   }
 
   public function exec($statement) {
-    return parent::exec(
-      $this->log($statement instanceOf pdoext_Query ? $statement->toSql($this) : $statement));
+    $sql = $statement instanceOf pdoext_Query ? $statement->toSql($this) : $statement;
+    $t = microtime(true);
+    $result = parent::exec($sql);
+    $this->log($sql, microtime(true) - $t);
+    return $result;
   }
 
   public function query($statement) {
-    return parent::query(
-      $this->log($statement instanceOf pdoext_Query ? $statement->toSql($this) : $statement));
+    $sql = $statement instanceOf pdoext_Query ? $statement->toSql($this) : $statement;
+    $t = microtime(true);
+    $result = parent::query($sql);
+    $this->log($sql, microtime(true) - $t);
+    return $result;
   }
 
   function __sqlite_group_concat_step($context, $idx, $string, $separator = ",") {
@@ -104,7 +115,7 @@ class pdoext_Connection extends PDO {
   public function prepare($sql, $options = array()) {
     $stmt = parent::prepare($sql, $options);
     if ($this->logTarget) {
-      $stmt->setLogging($this->logTarget, $sql);
+      $stmt->setLogging($this, $sql);
     }
     return $stmt;
   }
@@ -236,15 +247,18 @@ function pdoext_find_caller($skip = '/^pdoext_/i') {
 }
 
 class pdoext_LoggingStatement extends PDOStatement {
-  protected $logTarget;
+  protected $logger;
   protected $sql;
-  public function setLogging($logTarget, $sql) {
-    $this->logTarget = $logTarget;
+  public function setLogging($logger, $sql) {
+    $this->logger = $logger;
     $this->sql = $sql;
   }
   public function execute($input_parameters = array()) {
-    if ($this->logTarget) {
-      error_log("[" . date("Y-m-d H:i:s") . "] from " . pdoext_find_caller() . "\n---\n" . $this->sql . "\n---\n" . var_export($input_parameters, true) . "\n---\n", 3, $this->logTarget);
+    if ($this->logger) {
+      $t = microtime(true);
+      $result = parent::execute($input_parameters);
+      $this->logger->log($this->sql, microtime(true) - $t, $input_parameters);
+      return $result;
     }
     return parent::execute($input_parameters);
   }

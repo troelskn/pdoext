@@ -189,7 +189,6 @@ class TestOfTableGateway extends UnitTestCase {
   }
   function test_can_query_paginated() {
     $connection = new pdoext_Connection("sqlite::memory:");
-    $connection->setLogTarget();
     $connection->exec(
       'CREATE TABLE users (
          id INTEGER PRIMARY KEY AUTOINCREMENT,
