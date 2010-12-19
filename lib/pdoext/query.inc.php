@@ -84,6 +84,9 @@ class pdoext_query_Criteria implements pdoext_query_iCriteron {
     $this->criteria[] = $criterion;
     return $criterion;
   }
+  function where($left, $right = null, $comparator = '=') {
+    return $this->addCriterion($left, $right, $comparator);
+  }
   function setConjunctionAnd() {
     $this->conjunction = 'AND';
   }
