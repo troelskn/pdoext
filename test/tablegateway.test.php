@@ -219,5 +219,7 @@ class TestOfTableGateway extends UnitTestCase {
     }
     $this->assertTrue($a[0] instanceOf StdClass);
     $this->assertEqual("Kimberley", $a[0]->name);
+    $this->assertEqual(14, $q->totalCount());
+    $this->assertEqual(2, $q->totalPages());
   }
 }

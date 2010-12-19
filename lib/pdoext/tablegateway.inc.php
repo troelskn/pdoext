@@ -363,7 +363,7 @@ class pdoext_Resultset implements Iterator {
   }
 }
 
-class pdoext_Selection extends pdoext_Query implements IteratorAggregate, Countable {
+class pdoext_Selection extends pdoext_Query implements IteratorAggregate {
   protected $db;
   protected $gateway;
   protected $result;
@@ -377,6 +377,7 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate, Counta
   function paginate($current_page, $page_size = 10) {
     $this->current_page = $current_page;
     $this->page_size = $page_size;
+    return $this;
   }
   function currentPage() {
     return $this->current_page;
@@ -386,10 +387,10 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate, Counta
   }
   function totalPages() {
     if ($this->page_size) {
-      return floor($this->count() / $this->page_size);
+      return (int) ceil($this->totalCount() / $this->page_size);
     }
   }
-  function count() {
+  function totalCount() {
     $this->executeQuery();
     return $this->total_count;
   }
