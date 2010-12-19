@@ -12,6 +12,8 @@ class pdoext_Connection extends PDO {
   protected $nameOpening;
   protected $nameClosing;
 
+  protected $tableGatewayCache;
+
   public function __construct($dsn, $user = null, $password = null, $failSafe = true) {
     try {
        parent::__construct($dsn, $user, $password);
@@ -221,6 +223,22 @@ class pdoext_Connection extends PDO {
       default:
         throw new pdoext_MetaNotSupportedException();
     }
+  }
+
+  /**
+   * Returns a table gateway.
+   * @returns pdoext_TableGateway
+   */
+  function table($tablename) {
+    if (!isset($this->tableGatewayCache[$tablename])) {
+      $klass = $tablename.'gateway';
+      if (class_exists($klass)) {
+        $this->tableGatewayCache[$tablename] = new $klass($this);
+      } else {
+        $this->tableGatewayCache[$tablename] = new pdoext_TableGateway($tablename, $this);
+      }
+    }
+    return $this->tableGatewayCache[$tablename];
   }
 }
 
