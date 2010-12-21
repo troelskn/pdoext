@@ -5,7 +5,7 @@ if (realpath($_SERVER['PHP_SELF']) == __FILE__) {
   require_once 'simpletest/autorun.php';
 }
 set_include_path(
-  get_include_path() . PATH_SEPARATOR . dirname(__FILE__) . '/../lib/');
+  dirname(__FILE__) . '/../lib/' . PATH_SEPARATOR . get_include_path());
 
 require_once 'pdoext.inc.php';
 require_once 'pdoext/connection.inc.php';
