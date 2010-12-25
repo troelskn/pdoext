@@ -20,7 +20,13 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
   }
 
   function getIterator() {
-    return $this->select();
+    return $this->query();
+  }
+
+  function load($row) {
+    if (is_array($row)) {
+      return new pdoext_DatabaseRecord($row, $this->tablename);
+    }
   }
 
   /**
@@ -74,11 +80,16 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
   }
 
   protected function _getPKey() {
-    foreach ($this->reflect() as $column => $info) {
+    $columns = $this->reflect();
+    foreach ($columns as $column => $info) {
       if ($info['pk']) {
         return $column;
       }
     }
+    if (isset($columns['id'])) {
+      return 'id';
+    }
+    throw new Exception("Could not determine primary key");
   }
 
   /**
@@ -116,7 +127,7 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
    */
   protected function clearErrors($entity) {
     if (is_object($entity)) {
-      $entity->errors = array();
+      $entity->_errors = array();
     }
   }
 
@@ -125,24 +136,24 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
    * You can override this, if you want to report errors in a different way.
    */
   protected function hasErrors($entity) {
-    return is_object($entity) && is_array($entity->errors) && count($entity->errors) > 0;
+    return is_object($entity) && is_array($entity->_errors) && count($entity->_errors) > 0;
   }
 
   /**
    * Hook for validating before update or insert
-   * Set errors on `$data->errors` to abort.
+   * Set errors on `$data->_errors` to abort.
    */
   protected function validate($data) {}
 
   /**
    * Hook for validating before update.
-   * Set errors on `$data->errors` to abort.
+   * Set errors on `$data->_errors` to abort.
    */
   protected function validateUpdate($data) {}
 
   /**
    * Hook for validating before insert
-   * Set errors on `$data->errors` to abort.
+   * Set errors on `$data->_errors` to abort.
    */
   protected function validateInsert($data) {}
 
@@ -158,6 +169,9 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
     $where = array();
     $bind = array();
     foreach ($condition as $column => $value) {
+      if (!$column) {
+        throw new Exception("Illegal condition");
+      }
       if ($value instanceOf pdoext_query_iExpression) {
         $where[] = $this->db->quoteName($column) . " = " . $value->toSql($this->db);
       } else {
@@ -179,6 +193,7 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
 
   /**
    * Return a selection of all records
+   * @deprecated Use `query()` instead.
    */
   function select($limit = null, $offset = 0, $order = null, $direction = null) {
     $query = "SELECT * FROM " . $this->db->quoteName($this->tablename);
@@ -198,8 +213,6 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
     $result->setFetchMode(PDO::FETCH_ASSOC);
     if (method_exists($this, 'load')) {
       return new pdoext_Resultset($result, $this);
-      // TODO: Replace with a lazy iterator, to take benefit of buffered queries
-      // return new ArrayIterator(array_map(array($this, 'load'), $result->fetchAll(PDO::FETCH_ASSOC)));
     }
     return $result;
   }
@@ -330,6 +343,11 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
   }
 }
 
+/**
+ * A single table resultset.
+ *
+ * Will hydrate (load) rows.
+ */
 class pdoext_Resultset implements Iterator {
   protected $cursor;
   protected $loader;
@@ -363,6 +381,11 @@ class pdoext_Resultset implements Iterator {
   }
 }
 
+/**
+ * A single table query.
+ *
+ * Can be paginated and counted.
+ */
 class pdoext_Selection extends pdoext_Query implements IteratorAggregate {
   protected $db;
   protected $gateway;
@@ -433,5 +456,88 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate {
         $this->setOffset($offset);
       }
     }
+  }
+}
+
+/**
+ * An active record style wrapper around a database row.
+ */
+class pdoext_DatabaseRecord {
+  public $_errors = array();
+  protected $_row;
+  protected $_tablename;
+  protected static $_belongs_to = array();
+  protected static $_has_many = array();
+  function __construct($row, $tablename) {
+    $this->_row = $row;
+    $this->_tablename = $tablename;
+  }
+  protected static function belongsTo($tablename) {
+    if (!isset(self::$_belongs_to[$tablename])) {
+      self::$_belongs_to[$tablename] = array();
+      foreach (pdoext_db()->getInformationSchema()->getForeignKeys($tablename) as $info) {
+        $name = preg_replace('/_id$/', '', $info['column']);
+        self::$_belongs_to[$tablename][$name] = $info;
+      }
+    }
+    return self::$_belongs_to[$tablename];
+  }
+  protected static function hasMany($tablename) {
+    if (!isset(self::$_has_many[$tablename])) {
+      self::$_has_many[$tablename] = array();
+      foreach (pdoext_db()->getInformationSchema()->getReferencingKeys($tablename) as $info) {
+        $name = $info['table'];
+        self::$_has_many[$tablename][$name] = $info;
+      }
+    }
+    return self::$_has_many[$tablename];
+  }
+  function getArrayCopy() {
+    return $this->_row;
+  }
+  function __get($name) {
+    $internal_name = $this->underscore($name);
+    if (is_callable(array($this, 'get'.$internal_name))) {
+      return call_user_func(array($this, 'get'.$internal_name));
+    }
+    if (array_key_exists($internal_name, $this->_row)) {
+      return $this->_row[$internal_name];
+    }
+    $belongs_to = self::belongsTo($this->_tablename);
+    if (isset($belongs_to[$internal_name])) {
+      $referenced_table = $belongs_to[$internal_name]['referenced_table'];
+      $referenced_column = $belongs_to[$internal_name]['referenced_column'];
+      $column = $belongs_to[$internal_name]['column'];
+      if (isset($this->_row[$column])) {
+        return pdoext_db()->table($referenced_table)->fetch(array($referenced_column => $this->_row[$column]));
+      }
+      return null;
+    }
+    $has_many = self::hasMany($this->_tablename);
+    if (isset($has_many[$internal_name])) {
+      $referenced_column = $has_many[$internal_name]['referenced_column'];
+      $table = $has_many[$internal_name]['table'];
+      $column = $has_many[$internal_name]['column'];
+      return pdoext_db()->table($table)->query()->where($column, $this->_row[$referenced_column]);
+    }
+    throw new Exception("Undefined property '$name'");
+  }
+  function __set($name, $value) {
+    $internal_name = $this->underscore($name);
+    if (is_callable(array($this, 'set'.$internal_name))) {
+      return call_user_func(array($this, 'set'.$internal_name), $value);
+    }
+    if (array_key_exists($internal_name, $this->_row)) {
+      $this->_row[$internal_name] = $value;
+      return;
+    }
+    throw new Exception("Undefined property '$name'");
+  }
+  protected function underscore($cameled) {
+    return implode(
+      '_',
+      array_map(
+        'strtolower',
+        preg_split('/([A-Z]{1}[^A-Z]*)/', $cameled, -1, PREG_SPLIT_DELIM_CAPTURE|PREG_SPLIT_NO_EMPTY)));
   }
 }

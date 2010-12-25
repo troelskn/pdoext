@@ -37,6 +37,24 @@ class pdoext_DummyConnection {
   function quote($value) {
     return "'$value'";
   }
+  function getInformationSchema() {
+    return new pdoext_DummyInformationSchema();
+  }
+}
+
+class pdoext_DummyInformationSchema {
+  public function getTables() {
+    return array();
+  }
+  public function getColumns($table) {
+    return array();
+  }
+  public function getForeignKeys($table) {
+    return array();
+  }
+  public function getReferencingKeys($table) {
+    return array();
+  }
 }
 
 function pdoext_query($tablename, $alias = null) {
@@ -53,4 +71,11 @@ function pdoext_value($value) {
 
 function pdoext_literal($sql) {
   return new pdoext_query_Literal($sql);
+}
+
+function pdoext_db() {
+  if (!isset($GLOBALS['pdoext_connection']['instance'])) {
+    $GLOBALS['pdoext_connection']['instance'] = call_user_func($GLOBALS['pdoext_connection']['callback']);
+  }
+  return $GLOBALS['pdoext_connection']['instance'];
 }
