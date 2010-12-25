@@ -220,28 +220,10 @@ class pdoext_Connection extends PDO {
     }
     return $this->tableGatewayCache[$tablename];
   }
-}
 
-function pdoext_find_caller($skip = '/^pdoext_/i') {
-  foreach (debug_backtrace() as $frame) {
-    if (isset($frame['object'])) {
-      $name = get_class($frame['object']);
-    } elseif (isset($frame['class'])) {
-      $name = $frame['class'];
-    } else {
-      $name = '';
-    }
-    if (isset($frame['function'])) {
-      $name = ($name ? "$name#" : $name) . $frame['function'];
-    }
-    if (!preg_match($skip, $name)) {
-      if (isset($frame['file'], $frame['line'])) {
-        return $name . " in [" . $frame['file'] . " " . $frame['line'] . "]";
-      }
-      return $name;
-    }
+  function __get($name) {
+    return $this->table($name);
   }
-  return '{unknown}';
 }
 
 class pdoext_LoggingStatement extends PDOStatement {
