@@ -1,4 +1,7 @@
 <?php
+/**
+ * Indents a string by two spaces, even if the string has linebreaks.
+ */
 function pdoext_string_indent($s, $break_before_multiple_lines = false) {
   if ($break_before_multiple_lines && is_int(strpos($s, "\n"))) {
     return "\n  " . str_replace("\n", "\n  ", $s);
@@ -6,6 +9,9 @@ function pdoext_string_indent($s, $break_before_multiple_lines = false) {
   return "  " . str_replace("\n", "\n  ", $s);
 }
 
+/**
+ * Finds the first caller on the callstack that doesn't match the skip pattern.
+ */
 function pdoext_find_caller($skip = '/^pdoext_/i') {
   $last = null;
   foreach (debug_backtrace() as $frame) {
@@ -30,49 +36,43 @@ function pdoext_find_caller($skip = '/^pdoext_/i') {
   return '{unknown}';
 }
 
-class pdoext_DummyConnection {
-  function quoteName($name) {
-    return "`$name`";
-  }
-  function quote($value) {
-    return "'$value'";
-  }
-  function getInformationSchema() {
-    return new pdoext_DummyInformationSchema();
-  }
-}
-
-class pdoext_DummyInformationSchema {
-  public function getTables() {
-    return array();
-  }
-  public function getColumns($table) {
-    return array();
-  }
-  public function getForeignKeys($table) {
-    return array();
-  }
-  public function getReferencingKeys($table) {
-    return array();
-  }
-}
-
+/**
+ * Creates a new query object.
+ * @returns pdoext_Query
+ */
 function pdoext_query($tablename, $alias = null) {
   return new pdoext_Query($tablename, $alias);
 }
 
+/**
+ * Creates a field wrapper, used in queries
+ * @returns pdoext_query_Field
+ */
 function pdoext_field($name) {
   return new pdoext_query_Field($name);
 }
 
+/**
+ * Creates a value wrapper, used in queries
+ * @returns pdoext_query_Value
+ */
 function pdoext_value($value) {
   return new pdoext_query_Value($value);
 }
 
+/**
+ * Creates a literal wrapper, used in queries
+ * @returns pdoext_query_Literal
+ */
 function pdoext_literal($sql) {
   return new pdoext_query_Literal($sql);
 }
 
+/**
+ * Global accessor to return a database connection.
+ * Uses `$GLOBALS['pdoext_connection']['callback']` to instantiate on the first invocation.
+ * @returns pdoext_Connection
+ */
 function pdoext_db() {
   if (!isset($GLOBALS['pdoext_connection']['instance'])) {
     $GLOBALS['pdoext_connection']['instance'] = call_user_func($GLOBALS['pdoext_connection']['callback']);
