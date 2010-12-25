@@ -4,7 +4,7 @@
    */
 class pdoext_TableGateway implements IteratorAggregate, Countable {
   protected $tablename;
-  protected $pkey = -1;
+  protected $pkey = null;
 
   protected $db;
   protected $columns = null;
@@ -33,7 +33,8 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
    * Selects a single entity by pk
    */
   function find($id) {
-    return $this->fetch(array($this->getPKey() => $id));
+    $func_get_args = func_get_args();
+    return $this->fetch(array_combine($this->getPKey(), $func_get_args));
   }
 
   /**
@@ -68,28 +69,26 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
   }
 
   /**
-   * Returns the PK column.
-   * Note that this pre-supposes that the primary key is a single column, which may not always be the case.
-   * @return mixed
+   * Returns the PK columns.
+   * @return array
    */
   function getPKey() {
-    if ($this->pkey === -1) {
-      $this->pkey = $this->_getPKey();
-    }
-    return $this->pkey;
-  }
-
-  protected function _getPKey() {
-    $columns = $this->reflect();
-    foreach ($columns as $column => $info) {
-      if ($info['pk']) {
-        return $column;
+    if ($this->pkey === null) {
+      $this->pkey = array();
+      $columns = $this->reflect();
+      foreach ($columns as $column => $info) {
+        if ($info['pk']) {
+          $this->pkey[] = $column;
+        }
+      }
+      if (count($this->pkey) == 0 && isset($columns['id'])) {
+        $this->pkey[] = 'id';
+      }
+      if (count($this->pkey) == 0) {
+        throw new Exception("Could not determine primary key");
       }
     }
-    if (isset($columns['id'])) {
-      return 'id';
-    }
-    throw new Exception("Could not determine primary key");
+    return $this->pkey;
   }
 
   /**
@@ -280,16 +279,21 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
     $pk = $this->getPKey();
     if (!is_null($condition)) {
       $condition = $this->marshal($condition);
-    } elseif (isset($data[$pk])) {
-      $condition = array($pk => $data[$pk]);
     } else {
-      throw new Exception("No conditions given and PK is missing for update");
+      $condition = array();
+      foreach ($pk as $column) {
+        if (isset($data[$column])) {
+          $condition[$column] = $data[$column];
+        } else {
+          throw new Exception("No conditions given and PK is missing for update");
+        }
+      }
     }
     $query = "UPDATE " . $this->db->quoteName($this->tablename) . "\nSET";
     $columns = array();
     $bind = array();
     foreach ($this->getColumns() as $column) {
-      if (array_key_exists($column, $data) && $column != $pk) {
+      if (array_key_exists($column, $data) && !in_array($column, $pk)) {
         $value = $data[$column];
         if ($value instanceOf pdoext_query_iExpression) {
           $columns[] = $this->db->quoteName($column) . " = " . $value->toSql($this->db);
