@@ -9,6 +9,7 @@ class pdoext_Connection extends PDO {
   protected $slowLogOffset = null;
   protected $inTransaction = false;
 
+  protected $informationSchema;
   protected $nameOpening;
   protected $nameClosing;
 
@@ -50,6 +51,11 @@ class pdoext_Connection extends PDO {
         $this->nameOpening = $this->nameClosing = '"';
         break;
     }
+    $this->informationSchema = new pdoext_InformationSchema($this);
+  }
+
+  public function getInformationSchema() {
+    return $this->informationSchema;
   }
 
   public function supportsSqlCalcFoundRows() {
@@ -193,36 +199,10 @@ class pdoext_Connection extends PDO {
 
   /**
     * Returns reflection information about a table.
+    * @deprecated
     */
   public function getTableMeta($table) {
-    switch ($this->getAttribute(PDO::ATTR_DRIVER_NAME)) {
-      case 'mysql':
-        $result = $this->query("SHOW COLUMNS FROM ".$this->quoteName($table));
-        $result->setFetchMode(PDO::FETCH_ASSOC);
-        $meta = array();
-        foreach ($result as $row) {
-          $meta[$row['Field']] = array(
-            'pk' => $row['Key'] == 'PRI',
-            'type' => $row['Type'],
-            'blob' => preg_match('/(TEXT|BLOB)/', $row['Type']),
-          );
-        }
-        return $meta;
-      case 'sqlite':
-        $result = $this->query("PRAGMA table_info(".$this->quoteName($table).")");
-        $result->setFetchMode(PDO::FETCH_ASSOC);
-        $meta = array();
-        foreach ($result as $row) {
-          $meta[$row['name']] = array(
-            'pk' => $row['pk'] == '1',
-            'type' => $row['type'],
-            'blob' => preg_match('/(TEXT|BLOB)/', $row['type']),
-          );
-        }
-        return $meta;
-      default:
-        throw new pdoext_MetaNotSupportedException();
-    }
+    return $this->getInformationSchema()->getColumns($table);
   }
 
   /**
@@ -321,5 +301,153 @@ class pdoext_AlreadyInTransactionException extends Exception {}
 class pdoext_MetaNotSupportedException extends Exception {
   function __construct($message = "Meta querying not available for driver type", $code = 0) {
     parent::__construct($message, $code);
+  }
+}
+
+class pdoext_InformationSchema {
+  protected $connection;
+  function __construct($connection) {
+    $this->connection = $connection;
+  }
+  /**
+    * Returns list of tables in database.
+    */
+  public function getTables() {
+    switch ($this->connection->getAttribute(PDO::ATTR_DRIVER_NAME)) {
+      case 'mysql':
+        $sql = "SHOW TABLES";
+        break;
+      case 'sqlite':
+        $sql = 'SELECT name FROM sqlite_master WHERE type = "table"';
+        break;
+      default:
+        throw new pdoext_MetaNotSupportedException();
+    }
+    $result = $this->connection->query($sql);
+    $result->setFetchMode(PDO::FETCH_NUM);
+    $meta = array();
+    foreach ($result as $row) {
+      $meta[] = $row[0];
+    }
+    return $meta;
+  }
+  /**
+    * Returns reflection information about a table.
+    */
+  public function getColumns($table) {
+    switch ($this->connection->getAttribute(PDO::ATTR_DRIVER_NAME)) {
+      case 'mysql':
+        $result = $this->connection->query("SHOW COLUMNS FROM ".$this->connection->quoteName($table));
+        $result->setFetchMode(PDO::FETCH_ASSOC);
+        $meta = array();
+        foreach ($result as $row) {
+          $meta[$row['Field']] = array(
+            'pk' => $row['Key'] == 'PRI',
+            'type' => $row['Type'],
+            'blob' => preg_match('/(TEXT|BLOB)/', $row['Type']),
+          );
+        }
+        return $meta;
+      case 'sqlite':
+        $result = $this->connection->query("PRAGMA table_info(".$this->connection->quoteName($table).")");
+        $result->setFetchMode(PDO::FETCH_ASSOC);
+        $meta = array();
+        foreach ($result as $row) {
+          $meta[$row['name']] = array(
+            'pk' => $row['pk'] == '1',
+            'type' => $row['type'],
+            'blob' => preg_match('/(TEXT|BLOB)/', $row['type']),
+          );
+        }
+        return $meta;
+      default:
+        throw new pdoext_MetaNotSupportedException();
+    }
+  }
+  /**
+    * Returns a list of foreign keys for a table.
+    */
+  public function getForeignKeys($table) {
+    switch ($this->connection->getAttribute(PDO::ATTR_DRIVER_NAME)) {
+      case 'mysql':
+        foreach ($this->loadKeys() as $info) {
+          $meta = array();
+          if ($info['table_name'] === $table) {
+            $meta[] = array(
+              'table' => $row['table_name'],
+              'column' => $row['column_name'],
+              'referenced_table' => $row['referenced_table_name'],
+              'referenced_column' => $row['referenced_column_name'],
+            );
+          }
+        }
+        return $meta;
+      case 'sqlite':
+        $sql = "PRAGMA foreign_key_list(".$this->connection->quoteName($table).")";
+        break;
+      default:
+        throw new pdoext_MetaNotSupportedException();
+    }
+    $result = $this->connection->query($sql);
+    $result->setFetchMode(PDO::FETCH_ASSOC);
+    $meta = array();
+    foreach ($result as $row) {
+      $meta[] = array(
+        'table' => $table,
+        'column' => $row['from'],
+        'referenced_table' => $row['table'],
+        'referenced_column' => $row['to'],
+      );
+    }
+    return $meta;
+  }
+  /**
+    * Returns a list of foreign keys that refer a table.
+    */
+  public function getReferencingKeys($table) {
+    switch ($this->connection->getAttribute(PDO::ATTR_DRIVER_NAME)) {
+      case 'mysql':
+        foreach ($this->loadKeys() as $info) {
+          $meta = array();
+          if ($info['referenced_table_name'] === $table) {
+            $meta[] = array(
+              'table' => $row['table_name'],
+              'column' => $row['column_name'],
+              'referenced_table' => $row['referenced_table_name'],
+              'referenced_column' => $row['referenced_column_name'],
+            );
+          }
+        }
+        return $meta;
+      case 'sqlite':
+        $meta = array();
+        foreach ($this->getTables() as $tbl) {
+          if ($tbl != $table) {
+            foreach ($this->getForeignKeys($tbl) as $info) {
+              if ($info['referenced_table'] == $table) {
+                $meta[] = $info;
+              }
+            }
+          }
+        }
+        return $meta;
+      default:
+        throw new pdoext_MetaNotSupportedException();
+    }
+  }
+  protected function loadKeys() {
+    if (!isset($this->keys)) {
+      $sql = "SELECT TABLE_NAME AS `table_name`, COLUMN_NAME AS `column_name`, REFERENCED_COLUMN_NAME AS `referenced_column_name`, REFERENCED_TABLE_NAME AS `referenced_table_name`
+FROM information_schema.KEY_COLUMN_USAGE
+WHERE TABLE_SCHEMA = DATABASE()
+AND REFERENCED_TABLE_SCHEMA = DATABASE()";
+      $result = $this->connection->query($sql);
+      $result->setFetchMode(PDO::FETCH_ASSOC);
+      $this->keys = array();
+      foreach ($result as $row) {
+        $this->keys[] = $row;
+      }
+    }
+    return $this->keys;
   }
 }

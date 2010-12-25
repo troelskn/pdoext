@@ -56,7 +56,7 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
    */
   function reflect() {
     if (!$this->columns) {
-      $this->columns = $this->db->getTableMeta($this->tablename);
+      $this->columns = $this->db->getInformationSchema()->getColumns($this->tablename);
     }
     return $this->columns;
   }
