@@ -67,9 +67,7 @@ _Assuming the following table:_
 Example 3: Insert a record
 --
 
-    $db = new pdoext_Connection(...);
-    $users = new pdoext_TableGateway("users", $db);
-    $users->insert(array("id" => 42, "name" => "John"));
+    $db->users->insert(array("id" => 42, "name" => "John"));
 
 _The table now contains:_
 
@@ -80,8 +78,7 @@ id | name
 Example 4: Update a record
 --
 
-    ...
-    $users->update(array("name" => "Jim"), array("id" => 42));
+    $db->users->update(array("name" => "Jim"), array("id" => 42));
 
 _The table now contains:_
 
@@ -93,20 +90,36 @@ id | name
 Example 5: Fetch a single record
 --
 
-    ...
-    $record = $users->fetch(array("id" => 42));
+    $record = $db->users->fetch(array("id" => 42));
+    echo "id: " . $record->id . ", name: " . $record->name . "\n";
 
-_Returns:_
+_Prints out:_
 
-    Array(
-      'id' => '42',
-      'name' => 'Jim'
-    );
+    id: 42, name: Jim
 
 Example 6: Delete a record
 --
 
-    ...
-    $users->delete(array("id" => 42));
+    $db->users->delete(array("id" => 42));
+
+Example 7: Query through gateway
+--
+
+    $db->users->query()->where('name', 'jim%', 'like');
+
+_Results in:_
+
+    select *
+    from `users`
+    where `name` LIKE 'jim%'
+
+Example 8: Paginate query
+--
+
+    $selection = $db->users->query()->where('name', 'jim%', 'like')->paginate($page_number);
+    echo "Viewing page " . $selection->currentPage() . " of " . $selection->totalPages() . "\n";
+    foreach ($selection as $row) {
+      echo "id: " . $row->id . ", name: " . $row->name . "\n";
+    }
 
 More examples in the [test-suite](https://github.com/troelskn/pdoext/tree/master/test)
