@@ -414,8 +414,8 @@ class pdoext_InformationSchema {
   public function getForeignKeys($table) {
     switch ($this->connection->getAttribute(PDO::ATTR_DRIVER_NAME)) {
       case 'mysql':
+        $meta = array();
         foreach ($this->loadKeys() as $info) {
-          $meta = array();
           if ($info['table_name'] === $table) {
             $meta[] = array(
               'table' => $row['table_name'],
@@ -451,8 +451,8 @@ class pdoext_InformationSchema {
   public function getReferencingKeys($table) {
     switch ($this->connection->getAttribute(PDO::ATTR_DRIVER_NAME)) {
       case 'mysql':
+        $meta = array();
         foreach ($this->loadKeys() as $info) {
-          $meta = array();
           if ($info['referenced_table_name'] === $table) {
             $meta[] = array(
               'table' => $row['table_name'],
