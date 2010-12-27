@@ -466,7 +466,7 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate {
 /**
  * An active record style wrapper around a database row.
  */
-class pdoext_DatabaseRecord {
+class pdoext_DatabaseRecord implements ArrayAccess {
   public $_errors = array();
   protected $_row;
   protected $_tablename;
@@ -536,6 +536,33 @@ class pdoext_DatabaseRecord {
       return;
     }
     throw new Exception("Undefined property '$name'");
+  }
+  function offsetExists($name) {
+    $internal_name = $this->underscore($name);
+    if (is_callable(array($this, 'get'.$internal_name))) {
+      return true;
+    }
+    if (array_key_exists($internal_name, $this->_row)) {
+      return true;
+    }
+    $belongs_to = self::belongsTo($this->_tablename);
+    if (isset($belongs_to[$internal_name])) {
+      return true;
+    }
+    $has_many = self::hasMany($this->_tablename);
+    if (isset($has_many[$internal_name])) {
+      return true;
+    }
+    return false;
+  }
+  function offsetGet($key) {
+    return $this->__get($key);
+  }
+  function offsetSet($key, $value) {
+    $this->__set($key, $value);
+  }
+  function offsetUnset($key) {
+    unset($this->_row[$key]);
   }
   protected function underscore($cameled) {
     return implode(
