@@ -473,7 +473,14 @@ class pdoext_DatabaseRecord implements ArrayAccess {
   protected static $_belongs_to = array();
   protected static $_has_many = array();
   function __construct($row, $tablename) {
-    $this->_row = $row;
+    $this->_row = array();
+    foreach ($row as $key => $value) {
+      if (is_callable(array($this, 'set'.$key))) {
+        call_user_func(array($this, 'set'.$key), $value);
+      } else {
+        $this->_row[$key] = $value;
+      }
+    }
     $this->_tablename = $tablename;
   }
   protected static function belongsTo($tablename) {
