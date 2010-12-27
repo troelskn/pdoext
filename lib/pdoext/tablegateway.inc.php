@@ -524,7 +524,6 @@ class pdoext_DatabaseRecord implements ArrayAccess {
       $column = $has_many[$internal_name]['column'];
       return pdoext_db()->table($table)->query()->where($column, $this->_row[$referenced_column]);
     }
-    throw new Exception("Undefined property '$name'");
   }
   function __set($name, $value) {
     $internal_name = $this->underscore($name);
