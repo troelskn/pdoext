@@ -1,19 +1,24 @@
 <?php
 /**
   * A few extensions to the core PDO class.
-  * Adds a few helpers and patches differences between sqlite and mysql.
+  * Adds some helpers and patches differences between sqlite and mysql.
   * @license LGPL
   */
 class pdoext_Connection extends PDO {
-  protected $logTarget = null;
-  protected $slowLogOffset = null;
-  protected $inTransaction = false;
+  protected $_logTarget = null;
+  protected $_slowLogOffset = null;
+  protected $_inTransaction = false;
 
-  protected $nameOpening;
-  protected $nameClosing;
+  protected $_nameOpening;
+  protected $_nameClosing;
 
-  protected $tableGatewayCache;
+  protected $_tableGatewayCache;
+  protected $_informationSchema;
 
+  /**
+   * Creates a new database connection.
+   * Set `$failSafe` to true to have execution exit on error. Otherwise you'll get an exception and the stacktrace will contain your database password. Since such traces are usually logged somewhere, it is an unsafe thing to allow.
+   */
   public function __construct($dsn, $user = null, $password = null, $failSafe = true) {
     try {
        parent::__construct($dsn, $user, $password);
@@ -28,12 +33,12 @@ class pdoext_Connection extends PDO {
     switch ($this->getAttribute(PDO::ATTR_DRIVER_NAME)) {
       case 'mysql':
         $this->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, true);
-        $this->nameOpening = $this->nameClosing = '`';
+        $this->_nameOpening = $this->_nameClosing = '`';
         break;
 
       case 'mssql':
-        $this->nameOpening = '[';
-        $this->nameClosing = ']';
+        $this->_nameOpening = '[';
+        $this->_nameClosing = ']';
         break;
 
       case 'sqlite':
@@ -47,33 +52,58 @@ class pdoext_Connection extends PDO {
         // fallthru
 
       default:
-        $this->nameOpening = $this->nameClosing = '"';
+        $this->_nameOpening = $this->_nameClosing = '"';
         break;
     }
+    $this->_informationSchema = new pdoext_InformationSchema($this);
   }
 
+  /**
+   * Returns the information schema for the database.
+   * @returns pdoext_InformationSchema
+   */
+  public function getInformationSchema() {
+    return $this->_informationSchema;
+  }
+
+  /**
+   * Tells whether the rdbms supports `SQL_CALC_ROWS_FOUND` directive.
+   * @returns boolean
+   */
   public function supportsSqlCalcFoundRows() {
     return $this->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql';
   }
 
-  public function setLogTarget($logTarget = 'php://stdout', $slowLogOffset = null) {
-    $this->logTarget = $logTarget;
-    $this->slowLogOffset = $slowLogOffset;
+  /**
+   * Enables logging.
+   * You can pass a file name as first argument (`$logTarget`) - otherwise it will log to stdout.
+   * You may also pass a number to `$slowLogOffset` - Then only queries that are slower than the offset will be logged.
+   */
+  public function setLogging($logTarget = 'php://stdout', $slowLogOffset = null) {
+    $this->_logTarget = $logTarget;
+    $this->_slowLogOffset = $slowLogOffset;
     if ($this->getAttribute(PDO::ATTR_DRIVER_NAME) !== 'sqlite') {
       $this->setAttribute(PDO::ATTR_STATEMENT_CLASS, array('pdoext_LoggingStatement'));
     }
   }
 
+  /**
+   * Writes an entry to the log. This is an internal function and shouldn't be called outside of pdoext.
+   * @internal
+   */
   function log($sql, $t, $params = null) {
-    if ($this->logTarget) {
-      if ($this->slowLogOffset && $t < $this->slowLogOffset) {
+    if ($this->_logTarget) {
+      if ($this->_slowLogOffset && $t < $this->_slowLogOffset) {
         return;
       }
       $more = $params ? ("\n---\n" . var_export($params, true)) : "";
-      error_log("[" . date("Y-m-d H:i:s") . "] [" . number_format($t / 1000, 4) . " s] from " . pdoext_find_caller() . "\n---\n" . $sql . $more . "\n---\n", 3, $this->logTarget);
+      error_log("[" . date("Y-m-d H:i:s") . "] [" . number_format($t / 1000, 4) . " s] from " . pdoext_find_caller() . "\n---\n" . $sql . $more . "\n---\n", 3, $this->_logTarget);
     }
   }
 
+  /**
+   * Execute an SQL statement and return the number of affected rows.
+   */
   public function exec($statement) {
     $sql = $statement instanceOf pdoext_Query ? $statement->toSql($this) : $statement;
     $t = microtime(true);
@@ -82,6 +112,9 @@ class pdoext_Connection extends PDO {
     return $result;
   }
 
+  /**
+   * Executes an SQL statement, returning a result set as a PDOStatement object
+   */
   public function query($statement) {
     $sql = $statement instanceOf pdoext_Query ? $statement->toSql($this) : $statement;
     $t = microtime(true);
@@ -90,18 +123,25 @@ class pdoext_Connection extends PDO {
     return $result;
   }
 
+  /**
+   * @internal
+   */
   function __sqlite_group_concat_step($context, $idx, $string, $separator = ",") {
-    return ($context) ? ($context . $separator . $string) : $string;
+    return $context ? ($context . $separator . $string) : $string;
   }
 
+  /**
+   * @internal
+   */
   function __sqlite_group_concat_finalize($context) {
     return $context;
   }
 
   /**
-    * Workaround for bug in PDO:
-    *   http://bugs.php.net/bug.php?id=41698
-    */
+   * Workaround for bug in PDO:
+   *   http://bugs.php.net/bug.php?id=41698
+   * @internal
+   */
   protected function castInputParams($input) {
     $safe = array();
     foreach ($input as $key => $value) {
@@ -114,18 +154,21 @@ class pdoext_Connection extends PDO {
     return $safe;
   }
 
+  /**
+   * Prepares a statement for execution and returns a statement object.
+   */
   public function prepare($sql, $options = array()) {
     $stmt = parent::prepare($sql, $options);
-    if ($this->logTarget) {
+    if ($this->_logTarget) {
       $stmt->setLogging($this, $sql);
     }
     return $stmt;
   }
 
   /**
-    * Prepares a query, binds parameters, and executes it.
-    * If you're going to run the query multiple times, it's faster to prepare once, and reuse the statement.
-    */
+   * Prepares a query, binds parameters, and executes it.
+   * If you're going to run the query multiple times, it's faster to prepare once, and reuse the statement.
+   */
   public function pexecute($sql, $input_params = null) {
     $stmt = $this->prepare($sql);
     if (is_array($input_params)) {
@@ -137,44 +180,51 @@ class pdoext_Connection extends PDO {
   }
 
   /**
-    * Returns true if a transaction has been started, and not yet finished.
-    * @returns boolean
-    */
-  public function inTransaction() {
-    return !! $this->inTransaction;
+   * Returns true if a transaction has been started, and not yet finished.
+   * @returns boolean
+   */
+  public function _inTransaction() {
+    return !! $this->_inTransaction;
   }
 
   /**
-    * Throws an exception if a transaction hasn't been started
-    */
+   * Throws an exception if a transaction hasn't been started
+   */
   public function assertTransaction() {
-    if (!$this->inTransaction()) {
+    if (!$this->_inTransaction()) {
       throw new pdoext_NoTransactionStartedException();
     }
   }
 
   /**
-    * Like PDO::beginTransaction(), but throws an exception, if a transaction is already started.
-    */
+   * Initiates a transaction.
+   * Like PDO::beginTransaction(), but throws an exception, if a transaction is already started.
+   */
   public function beginTransaction() {
-    if ($this->inTransaction) {
-      throw new pdoext_AlreadyInTransactionException(sprintf("Already in transaction. Tansaction started at line %s in file %s", $this->inTransaction[0], $this->inTransaction[1]));
+    if ($this->_inTransaction) {
+      throw new pdoext_AlreadyInTransactionException(sprintf("Already in transaction. Tansaction started at line %s in file %s", $this->_inTransaction[0], $this->_inTransaction[1]));
     }
     $result = parent::beginTransaction();
     $stack = debug_backtrace();
-    $this->inTransaction = array($stack[0]['file'], $stack[0]['line']);
+    $this->_inTransaction = array($stack[0]['file'], $stack[0]['line']);
     return $result;
   }
 
+  /**
+   * Rolls back a transaction
+   */
   public function rollback() {
     $result = parent::rollback();
-    $this->inTransaction = false;
+    $this->_inTransaction = false;
     return $result;
   }
 
+  /**
+   * Commits a transaction
+   */
   public function commit() {
     $result = parent::commit();
-    $this->inTransaction = false;
+    $this->_inTransaction = false;
     return $result;
   }
 
@@ -184,45 +234,19 @@ class pdoext_Connection extends PDO {
   public function quoteName($name) {
     $names = array();
     foreach (explode(".", $name) as $name) {
-      $names[] = $this->nameOpening
-        .str_replace($this->nameClosing, $this->nameClosing.$this->nameClosing, $name)
-        .$this->nameClosing;
+      $names[] = $this->_nameOpening
+        .str_replace($this->_nameClosing, $this->_nameClosing.$this->_nameClosing, $name)
+        .$this->_nameClosing;
     }
     return implode(".", $names);
   }
 
   /**
     * Returns reflection information about a table.
+    * @deprecated
     */
   public function getTableMeta($table) {
-    switch ($this->getAttribute(PDO::ATTR_DRIVER_NAME)) {
-      case 'mysql':
-        $result = $this->query("SHOW COLUMNS FROM ".$this->quoteName($table));
-        $result->setFetchMode(PDO::FETCH_ASSOC);
-        $meta = array();
-        foreach ($result as $row) {
-          $meta[$row['Field']] = array(
-            'pk' => $row['Key'] == 'PRI',
-            'type' => $row['Type'],
-            'blob' => preg_match('/(TEXT|BLOB)/', $row['Type']),
-          );
-        }
-        return $meta;
-      case 'sqlite':
-        $result = $this->query("PRAGMA table_info(".$this->quoteName($table).")");
-        $result->setFetchMode(PDO::FETCH_ASSOC);
-        $meta = array();
-        foreach ($result as $row) {
-          $meta[$row['name']] = array(
-            'pk' => $row['pk'] == '1',
-            'type' => $row['type'],
-            'blob' => preg_match('/(TEXT|BLOB)/', $row['type']),
-          );
-        }
-        return $meta;
-      default:
-        throw new pdoext_MetaNotSupportedException();
-    }
+    return $this->getInformationSchema()->getColumns($table);
   }
 
   /**
@@ -230,40 +254,28 @@ class pdoext_Connection extends PDO {
    * @returns pdoext_TableGateway
    */
   function table($tablename) {
-    if (!isset($this->tableGatewayCache[$tablename])) {
+    if (!isset($this->_tableGatewayCache[$tablename])) {
       $klass = $tablename.'gateway';
       if (class_exists($klass)) {
-        $this->tableGatewayCache[$tablename] = new $klass($this);
+        $this->_tableGatewayCache[$tablename] = new $klass($this);
       } else {
-        $this->tableGatewayCache[$tablename] = new pdoext_TableGateway($tablename, $this);
+        $this->_tableGatewayCache[$tablename] = new pdoext_TableGateway($tablename, $this);
       }
     }
-    return $this->tableGatewayCache[$tablename];
+    return $this->_tableGatewayCache[$tablename];
+  }
+
+  /**
+   * Magic property getter - alias for `table()`
+   */
+  function __get($name) {
+    return $this->table($name);
   }
 }
 
-function pdoext_find_caller($skip = '/^pdoext_/i') {
-  foreach (debug_backtrace() as $frame) {
-    if (isset($frame['object'])) {
-      $name = get_class($frame['object']);
-    } elseif (isset($frame['class'])) {
-      $name = $frame['class'];
-    } else {
-      $name = '';
-    }
-    if (isset($frame['function'])) {
-      $name = ($name ? "$name#" : $name) . $frame['function'];
-    }
-    if (!preg_match($skip, $name)) {
-      if (isset($frame['file'], $frame['line'])) {
-        return $name . " in [" . $frame['file'] . " " . $frame['line'] . "]";
-      }
-      return $name;
-    }
-  }
-  return '{unknown}';
-}
-
+/**
+ * An extended PDOStatement that logs when executing.
+ */
 class pdoext_LoggingStatement extends PDOStatement {
   protected $logger;
   protected $sql;
@@ -310,16 +322,179 @@ class pdoext_SQLiteStatement extends pdoext_LoggingStatement {
   }
 }
 
+/**
+ * This exception is raised if you try to `rollback` or `commit` when not in transaction.
+ */
 class pdoext_NoTransactionStartedException extends Exception {
   function __construct($message = "No transaction started", $code = 0) {
     parent::__construct($message, $code);
   }
 }
 
+/**
+ * This exception is raised if you try to begin a nested transaction.
+ */
 class pdoext_AlreadyInTransactionException extends Exception {}
 
+/**
+ * This exception is raised if the driver doesn't support introspection via information schema.
+ */
 class pdoext_MetaNotSupportedException extends Exception {
   function __construct($message = "Meta querying not available for driver type", $code = 0) {
     parent::__construct($message, $code);
+  }
+}
+
+/**
+ * Provides access to introspection of the database schema.
+ */
+class pdoext_InformationSchema {
+  protected $connection;
+  function __construct($connection) {
+    $this->connection = $connection;
+  }
+  /**
+    * Returns list of tables in database.
+    */
+  public function getTables() {
+    switch ($this->connection->getAttribute(PDO::ATTR_DRIVER_NAME)) {
+      case 'mysql':
+        $sql = "SHOW TABLES";
+        break;
+      case 'sqlite':
+        $sql = 'SELECT name FROM sqlite_master WHERE type = "table"';
+        break;
+      default:
+        throw new pdoext_MetaNotSupportedException();
+    }
+    $result = $this->connection->query($sql);
+    $result->setFetchMode(PDO::FETCH_NUM);
+    $meta = array();
+    foreach ($result as $row) {
+      $meta[] = $row[0];
+    }
+    return $meta;
+  }
+  /**
+    * Returns reflection information about a table.
+    */
+  public function getColumns($table) {
+    switch ($this->connection->getAttribute(PDO::ATTR_DRIVER_NAME)) {
+      case 'mysql':
+        $result = $this->connection->query("SHOW COLUMNS FROM ".$this->connection->quoteName($table));
+        $result->setFetchMode(PDO::FETCH_ASSOC);
+        $meta = array();
+        foreach ($result as $row) {
+          $meta[$row['Field']] = array(
+            'pk' => $row['Key'] == 'PRI',
+            'type' => $row['Type'],
+            'blob' => preg_match('/(TEXT|BLOB)/', $row['Type']),
+          );
+        }
+        return $meta;
+      case 'sqlite':
+        $result = $this->connection->query("PRAGMA table_info(".$this->connection->quoteName($table).")");
+        $result->setFetchMode(PDO::FETCH_ASSOC);
+        $meta = array();
+        foreach ($result as $row) {
+          $meta[$row['name']] = array(
+            'pk' => $row['pk'] == '1',
+            'type' => $row['type'],
+            'blob' => preg_match('/(TEXT|BLOB)/', $row['type']),
+          );
+        }
+        return $meta;
+      default:
+        throw new pdoext_MetaNotSupportedException();
+    }
+  }
+  /**
+    * Returns a list of foreign keys for a table.
+    */
+  public function getForeignKeys($table) {
+    switch ($this->connection->getAttribute(PDO::ATTR_DRIVER_NAME)) {
+      case 'mysql':
+        $meta = array();
+        foreach ($this->loadKeys() as $info) {
+          if ($info['table_name'] === $table) {
+            $meta[] = array(
+              'table' => $row['table_name'],
+              'column' => $row['column_name'],
+              'referenced_table' => $row['referenced_table_name'],
+              'referenced_column' => $row['referenced_column_name'],
+            );
+          }
+        }
+        return $meta;
+      case 'sqlite':
+        $sql = "PRAGMA foreign_key_list(".$this->connection->quoteName($table).")";
+        break;
+      default:
+        throw new pdoext_MetaNotSupportedException();
+    }
+    $result = $this->connection->query($sql);
+    $result->setFetchMode(PDO::FETCH_ASSOC);
+    $meta = array();
+    foreach ($result as $row) {
+      $meta[] = array(
+        'table' => $table,
+        'column' => $row['from'],
+        'referenced_table' => $row['table'],
+        'referenced_column' => $row['to'],
+      );
+    }
+    return $meta;
+  }
+  /**
+    * Returns a list of foreign keys that refer a table.
+    */
+  public function getReferencingKeys($table) {
+    switch ($this->connection->getAttribute(PDO::ATTR_DRIVER_NAME)) {
+      case 'mysql':
+        $meta = array();
+        foreach ($this->loadKeys() as $info) {
+          if ($info['referenced_table_name'] === $table) {
+            $meta[] = array(
+              'table' => $row['table_name'],
+              'column' => $row['column_name'],
+              'referenced_table' => $row['referenced_table_name'],
+              'referenced_column' => $row['referenced_column_name'],
+            );
+          }
+        }
+        return $meta;
+      case 'sqlite':
+        $meta = array();
+        foreach ($this->getTables() as $tbl) {
+          if ($tbl != $table) {
+            foreach ($this->getForeignKeys($tbl) as $info) {
+              if ($info['referenced_table'] == $table) {
+                $meta[] = $info;
+              }
+            }
+          }
+        }
+        return $meta;
+      default:
+        throw new pdoext_MetaNotSupportedException();
+    }
+  }
+  /**
+   * @internal
+   */
+  protected function loadKeys() {
+    if (!isset($this->keys)) {
+      $sql = "SELECT TABLE_NAME AS `table_name`, COLUMN_NAME AS `column_name`, REFERENCED_COLUMN_NAME AS `referenced_column_name`, REFERENCED_TABLE_NAME AS `referenced_table_name`
+FROM information_schema.KEY_COLUMN_USAGE
+WHERE TABLE_SCHEMA = DATABASE()
+AND REFERENCED_TABLE_SCHEMA = DATABASE()";
+      $result = $this->connection->query($sql);
+      $result->setFetchMode(PDO::FETCH_ASSOC);
+      $this->keys = array();
+      foreach ($result as $row) {
+        $this->keys[] = $row;
+      }
+    }
+    return $this->keys;
   }
 }

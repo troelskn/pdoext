@@ -103,7 +103,7 @@ class TestOfTableGatewayBasicUsecases extends UnitTestCase {
     $gateway = new pdoext_TableGateway('users', $connection);
     $john = $gateway->fetch(array('id' => 42));
 
-    $this->assertEqual($john, array('id' => 42, 'name' => 'John'));
+    $this->assertEqual($john->getArrayCopy(), array('id' => 42, 'name' => 'John'));
   }
 }
 
@@ -146,48 +146,29 @@ class TestOfTableGateway extends UnitTestCase {
        )'
     );
     $gateway = new test_UsersGateway($connection);
-    $gateway->insert(array('name' => 'John'));
-    $gateway->insert(array('name' => 'Jim'));
+    $gateway->insert(array('name' => 'Anna'));
+    $gateway->insert(array('name' => 'Betty'));
+    $gateway->insert(array('name' => 'Charlotte'));
+    $gateway->insert(array('name' => 'Donna'));
+    $gateway->insert(array('name' => 'Elisabeth'));
+    $gateway->insert(array('name' => 'Francesca'));
+    $gateway->insert(array('name' => 'Gabriella'));
+    $gateway->insert(array('name' => 'Hannah'));
+    $gateway->insert(array('name' => 'Isabel'));
+    $gateway->insert(array('name' => 'Jacqueline'));
+    $gateway->insert(array('name' => 'Kimberley'));
+    $gateway->insert(array('name' => 'Laila'));
+    $gateway->insert(array('name' => 'Madeleine'));
+    $gateway->insert(array('name' => 'Nancy'));
 
     $a = array();
     foreach ($gateway->select() as $row) {
       $a[] = $row;
     }
     $this->assertTrue($a[0] instanceOf StdClass);
-    $this->assertEqual("John", $a[0]->name);
-  }
-  function test_can_query() {
-    $connection = new pdoext_Connection("sqlite::memory:");
-    $connection->exec(
-      'CREATE TABLE users (
-         id INTEGER PRIMARY KEY AUTOINCREMENT,
-         name VARCHAR(255)
-       )'
-    );
-    $gateway = new test_UsersGateway($connection);
-    $gateway->insert(array('name' => 'Anna'));
-    $gateway->insert(array('name' => 'Betty'));
-    $gateway->insert(array('name' => 'Charlotte'));
-    $gateway->insert(array('name' => 'Donna'));
-    $gateway->insert(array('name' => 'Elisabeth'));
-    $gateway->insert(array('name' => 'Francesca'));
-    $gateway->insert(array('name' => 'Gabriella'));
-    $gateway->insert(array('name' => 'Hannah'));
-    $gateway->insert(array('name' => 'Isabel'));
-    $gateway->insert(array('name' => 'Jacqueline'));
-    $gateway->insert(array('name' => 'Kimberley'));
-    $gateway->insert(array('name' => 'Laila'));
-    $gateway->insert(array('name' => 'Madeleine'));
-    $gateway->insert(array('name' => 'Nancy'));
-
-    $a = array();
-    foreach ($gateway->query() as $row) {
-      $a[] = $row;
-    }
-    $this->assertTrue($a[0] instanceOf StdClass);
     $this->assertEqual("Anna", $a[0]->name);
   }
-  function test_can_query_paginated() {
+  function test_can_select_paginated() {
     $connection = new pdoext_Connection("sqlite::memory:");
     $connection->exec(
       'CREATE TABLE users (
@@ -211,8 +192,7 @@ class TestOfTableGateway extends UnitTestCase {
     $gateway->insert(array('name' => 'Madeleine'));
     $gateway->insert(array('name' => 'Nancy'));
 
-    $q = $gateway->query();
-    $q->paginate(2);
+    $q = $gateway->select()->paginate(2);
     $a = array();
     foreach ($q as $row) {
       $a[] = $row;
@@ -221,5 +201,44 @@ class TestOfTableGateway extends UnitTestCase {
     $this->assertEqual("Kimberley", $a[0]->name);
     $this->assertEqual(14, $q->totalCount());
     $this->assertEqual(2, $q->totalPages());
+  }
+}
+
+class TestOfRecordRelations extends UnitTestCase {
+  function setUp() {
+    $this->connection = new pdoext_Connection("sqlite::memory:");
+    $this->connection->exec(
+      'CREATE TABLE artists(
+         id    INTEGER PRIMARY KEY,
+         name  TEXT
+       )'
+    );
+    $this->connection->exec(
+      'CREATE TABLE tracks(
+         id     INTEGER PRIMARY KEY,
+         name   TEXT,
+         artist_id INTEGER,
+         FOREIGN KEY(artist_id) REFERENCES artists(id)
+       )'
+    );
+    $this->connection->exec('insert into artists values (1, "Bob Dylan")');
+    $this->connection->exec('insert into tracks values (1, "Blowing in the wind", 1)');
+    $this->connection->exec('insert into tracks values (2, "House of the rising sun", 1)');
+    $GLOBALS['pdoext_connection']['instance'] = $this->connection;
+  }
+  function tearDown() {
+    $GLOBALS['pdoext_connection']['instance'] = null;
+  }
+  function test_has_many() {
+    $artist = $this->connection->artists->find(1);
+    $tmp = array();
+    foreach ($artist->tracks as $track) {
+      $tmp[] = $track->name;
+    }
+    $this->assertEqual($tmp, array("Blowing in the wind", "House of the rising sun"));
+  }
+  function test_belongs_to() {
+    $track = $this->connection->tracks->find(1);
+    $this->assertEqual("Bob Dylan", $track->artist->name);
   }
 }

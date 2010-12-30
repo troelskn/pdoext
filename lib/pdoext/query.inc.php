@@ -1,8 +1,17 @@
 <?php
+/**
+ * Generic interface for all query-like objects.
+ */
 interface pdoext_query_iExpression {
+  /**
+   * Compiles the object into a string representation, using a `pdoext_Connection`
+   */
   function toSql($db);
 }
 
+/**
+ * Represents a field (column) in a query.
+ */
 class pdoext_query_Field implements pdoext_query_iExpression {
   protected $name;
   protected $tablename;
@@ -27,6 +36,9 @@ class pdoext_query_Field implements pdoext_query_iExpression {
   }
 }
 
+/**
+ * Represents a value in a query.
+ */
 class pdoext_query_Value implements pdoext_query_iExpression {
   protected $value;
   function __construct($value) {
@@ -53,6 +65,9 @@ class pdoext_query_Value implements pdoext_query_iExpression {
   }
 }
 
+/**
+ * Represent an SQL literal.
+ */
 class pdoext_query_Literal implements pdoext_query_iExpression {
   protected $sql;
   function __construct($sql) {
@@ -68,6 +83,9 @@ class pdoext_query_Literal implements pdoext_query_iExpression {
 
 interface pdoext_query_iCriteron {}
 
+/**
+ * Multiple criterion, strung together with a conjuntion (OR or AND).
+ */
 class pdoext_query_Criteria implements pdoext_query_iCriteron {
   protected $conjunction;
   protected $criteria = array();
@@ -85,7 +103,8 @@ class pdoext_query_Criteria implements pdoext_query_iCriteron {
     return $criterion;
   }
   function where($left, $right = null, $comparator = '=') {
-    return $this->addCriterion($left, $right, $comparator);
+    $this->addCriterion($left, $right, $comparator);
+    return $this;
   }
   function setConjunctionAnd() {
     $this->conjunction = 'AND';
@@ -105,6 +124,9 @@ class pdoext_query_Criteria implements pdoext_query_iCriteron {
   }
 }
 
+/**
+ * A single criterion. The main building block of queries.
+ */
 class pdoext_query_Criterion implements pdoext_query_iCriteron {
   protected $left;
   protected $right;
@@ -136,13 +158,16 @@ class pdoext_query_Criterion implements pdoext_query_iCriteron {
   }
 }
 
+/**
+ * Represents a join on a query.
+ */
 class pdoext_query_Join extends pdoext_query_Criteria {
   protected $type;
   protected $table;
   protected $alias;
   public function __construct($table, $type = 'JOIN', $alias = null) {
     parent::__construct('AND');
-    $this->table = $table; // TODO: Can a query be added as the join target?
+    $this->table = $table; // @TODO Can a query be added as the join target?
     $this->type = " ".trim($type)." ";
     $this->alias = $alias;
   }
@@ -159,6 +184,9 @@ class pdoext_query_Join extends pdoext_query_Criteria {
   }
 }
 
+/**
+ * Represents a full *select* query.
+ */
 class pdoext_Query extends pdoext_query_Criteria implements pdoext_query_iExpression {
   protected $tablename;
   protected $alias;
@@ -191,7 +219,7 @@ class pdoext_Query extends pdoext_query_Criteria implements pdoext_query_iExpres
   }
   /**
    * @tip
-   *   Some times, WHERE clauses with OR can be optimised, by creating two queries and UNION them together.
+   *   Some times, WHERE clauses with OR can be optimised by creating two queries and UNION them together.
    *   See:
    *   http://www.techfounder.net/2008/10/15/optimizing-or-union-operations-in-mysql/
    *
