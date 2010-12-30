@@ -146,48 +146,29 @@ class TestOfTableGateway extends UnitTestCase {
        )'
     );
     $gateway = new test_UsersGateway($connection);
-    $gateway->insert(array('name' => 'John'));
-    $gateway->insert(array('name' => 'Jim'));
+    $gateway->insert(array('name' => 'Anna'));
+    $gateway->insert(array('name' => 'Betty'));
+    $gateway->insert(array('name' => 'Charlotte'));
+    $gateway->insert(array('name' => 'Donna'));
+    $gateway->insert(array('name' => 'Elisabeth'));
+    $gateway->insert(array('name' => 'Francesca'));
+    $gateway->insert(array('name' => 'Gabriella'));
+    $gateway->insert(array('name' => 'Hannah'));
+    $gateway->insert(array('name' => 'Isabel'));
+    $gateway->insert(array('name' => 'Jacqueline'));
+    $gateway->insert(array('name' => 'Kimberley'));
+    $gateway->insert(array('name' => 'Laila'));
+    $gateway->insert(array('name' => 'Madeleine'));
+    $gateway->insert(array('name' => 'Nancy'));
 
     $a = array();
     foreach ($gateway->select() as $row) {
       $a[] = $row;
     }
     $this->assertTrue($a[0] instanceOf StdClass);
-    $this->assertEqual("John", $a[0]->name);
-  }
-  function test_can_query() {
-    $connection = new pdoext_Connection("sqlite::memory:");
-    $connection->exec(
-      'CREATE TABLE users (
-         id INTEGER PRIMARY KEY AUTOINCREMENT,
-         name VARCHAR(255)
-       )'
-    );
-    $gateway = new test_UsersGateway($connection);
-    $gateway->insert(array('name' => 'Anna'));
-    $gateway->insert(array('name' => 'Betty'));
-    $gateway->insert(array('name' => 'Charlotte'));
-    $gateway->insert(array('name' => 'Donna'));
-    $gateway->insert(array('name' => 'Elisabeth'));
-    $gateway->insert(array('name' => 'Francesca'));
-    $gateway->insert(array('name' => 'Gabriella'));
-    $gateway->insert(array('name' => 'Hannah'));
-    $gateway->insert(array('name' => 'Isabel'));
-    $gateway->insert(array('name' => 'Jacqueline'));
-    $gateway->insert(array('name' => 'Kimberley'));
-    $gateway->insert(array('name' => 'Laila'));
-    $gateway->insert(array('name' => 'Madeleine'));
-    $gateway->insert(array('name' => 'Nancy'));
-
-    $a = array();
-    foreach ($gateway->query() as $row) {
-      $a[] = $row;
-    }
-    $this->assertTrue($a[0] instanceOf StdClass);
     $this->assertEqual("Anna", $a[0]->name);
   }
-  function test_can_query_paginated() {
+  function test_can_select_paginated() {
     $connection = new pdoext_Connection("sqlite::memory:");
     $connection->exec(
       'CREATE TABLE users (
@@ -211,8 +192,7 @@ class TestOfTableGateway extends UnitTestCase {
     $gateway->insert(array('name' => 'Madeleine'));
     $gateway->insert(array('name' => 'Nancy'));
 
-    $q = $gateway->query();
-    $q->paginate(2);
+    $q = $gateway->select()->paginate(2);
     $a = array();
     foreach ($q as $row) {
       $a[] = $row;

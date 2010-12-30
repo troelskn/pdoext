@@ -19,14 +19,39 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
     $this->db = $db;
   }
 
+  /**
+   * Implements IteratorAggregate::getIterator()
+   */
   function getIterator() {
-    return $this->query();
+    return $this->select();
   }
 
+  /**
+   * Return a count of all records
+   *
+   * Implements Countable::count()
+   */
+  function count() {
+    $query = "SELECT count(*) FROM " . $this->db->quoteName($this->tablename);
+    $result = $this->db->query($query);
+    $row = $result->fetch(PDO::FETCH_NUM);
+    return $row[0];
+  }
+
+  /**
+   * Creates a record from an array
+   */
   function load($row) {
     if (is_array($row)) {
       return new pdoext_DatabaseRecord($row, $this->tablename);
     }
+  }
+
+  /**
+   * Creates a new record
+   */
+  function create() {
+    return $this->load(array());
   }
 
   /**
@@ -38,34 +63,24 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
   }
 
   /**
-   * Creates a selection query.
+   * Returns a selection query.
    */
-  function query() {
+  function select() {
     return new pdoext_Selection($this, $this->db);
   }
 
-  protected function marshal($object) {
-    if (is_array($object)) {
-      return $object;
-    }
-    if (is_object($object)) {
-      if (method_exists($object, 'getArrayCopy')) {
-        return $object->getArrayCopy();
-      }
-      return get_object_vars($object);
-    }
-    throw new Exception("Unable to marshal input into hash.");
+  /**
+   * Executes an SQL statement, returning a result set as a pdoext_Resultset object
+   */
+  function query($statement) {
+    return new pdoext_Resultset($this->db->query($statement), $this);
   }
 
   /**
-   * Introspects the schema, and returns an array of the table's columns.
-   * @return [] hash
+   * Prepares a query, binds parameters, and executes it.
    */
-  function reflect() {
-    if (!$this->columns) {
-      $this->columns = $this->db->getInformationSchema()->getColumns($this->tablename);
-    }
-    return $this->columns;
+  function pexecute($sql, $input_params = null) {
+    return new pdoext_Resultset($this->db->pexecute($sql, $input_params), $this);
   }
 
   /**
@@ -118,6 +133,30 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
       }
     }
     return $columns;
+  }
+
+  /**
+   * Introspects the schema, and returns an array of the table's columns.
+   * @return [] hash
+   */
+  protected function reflect() {
+    if (!$this->columns) {
+      $this->columns = $this->db->getInformationSchema()->getColumns($this->tablename);
+    }
+    return $this->columns;
+  }
+
+  protected function marshal($object) {
+    if (is_array($object)) {
+      return $object;
+    }
+    if (is_object($object)) {
+      if (method_exists($object, 'getArrayCopy')) {
+        return $object->getArrayCopy();
+      }
+      return get_object_vars($object);
+    }
+    throw new Exception("Unable to marshal input into hash.");
   }
 
   /**
@@ -188,42 +227,6 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
       return $row ? $this->load($row) : null;
     }
     return $result->fetch(PDO::FETCH_ASSOC);
-  }
-
-  /**
-   * Return a selection of all records
-   * @deprecated Use `query()` instead.
-   */
-  function select($limit = null, $offset = 0, $order = null, $direction = null) {
-    $query = "SELECT * FROM " . $this->db->quoteName($this->tablename);
-    if ($order) {
-      $query .= "\nORDER BY " . $this->db->quoteName($order);
-      if ($direction) {
-        $query .= strtolower($direction) === 'desc' ? 'desc' : 'asc';
-      }
-    }
-    if ($limit) {
-      $query .= "\nLIMIT " . ((integer) $limit);
-    }
-    if ($offset) {
-      $query .= "\nOFFSET " . ((integer) $offset);
-    }
-    $result = $this->db->query($query);
-    $result->setFetchMode(PDO::FETCH_ASSOC);
-    if (method_exists($this, 'load')) {
-      return new pdoext_Resultset($result, $this);
-    }
-    return $result;
-  }
-
-  /**
-   * Return a count of all records
-   */
-  function count() {
-    $query = "SELECT count(*) FROM " . $this->db->quoteName($this->tablename);
-    $result = $this->db->query($query);
-    $row = $result->fetch(PDO::FETCH_NUM);
-    return $row[0];
   }
 
   /**
@@ -348,44 +351,6 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
 }
 
 /**
- * A single table resultset.
- *
- * Will hydrate (load) rows.
- */
-class pdoext_Resultset implements Iterator {
-  protected $cursor;
-  protected $loader;
-  protected $key = 0;
-  protected $current = null;
-  function __construct($cursor, $loader) {
-    $this->cursor = $cursor;
-    $this->loader = $loader;
-  }
-  protected function load($row) {
-    return $row ? $this->loader->load($row) : $row;
-  }
-  function current() {
-    return $this->current = $this->current === null ? $this->load($this->cursor->fetch(PDO::FETCH_ASSOC)) : $this->current;
-  }
-  function key() {
-    return $this->key;
-  }
-  function next() {
-    $this->key++;
-    $this->current = null;
-    return $this->current();
-  }
-  function rewind() {
-    if ($this->current !== null) {
-      throw new Exception("Can't rewind database resultset");
-    }
-  }
-  function valid() {
-    return $this->current() !== false;
-  }
-}
-
-/**
  * A single table query.
  *
  * Can be paginated and counted.
@@ -404,6 +369,10 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate {
   function paginate($current_page, $page_size = 10) {
     $this->current_page = $current_page;
     $this->page_size = $page_size;
+    return $this;
+  }
+  function orderBy($order, $direction = null) {
+    $this->setOrder($order, $direction);
     return $this;
   }
   function currentPage() {
@@ -460,6 +429,44 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate {
         $this->setOffset($offset);
       }
     }
+  }
+}
+
+/**
+ * A single table resultset.
+ *
+ * Will hydrate (load) rows.
+ */
+class pdoext_Resultset implements Iterator {
+  protected $cursor;
+  protected $loader;
+  protected $key = 0;
+  protected $current = null;
+  function __construct($cursor, $loader) {
+    $this->cursor = $cursor;
+    $this->loader = $loader;
+  }
+  protected function load($row) {
+    return $row ? $this->loader->load($row) : $row;
+  }
+  function current() {
+    return $this->current = $this->current === null ? $this->load($this->cursor->fetch(PDO::FETCH_ASSOC)) : $this->current;
+  }
+  function key() {
+    return $this->key;
+  }
+  function next() {
+    $this->key++;
+    $this->current = null;
+    return $this->current();
+  }
+  function rewind() {
+    if ($this->current !== null) {
+      throw new Exception("Can't rewind database resultset");
+    }
+  }
+  function valid() {
+    return $this->current() !== false;
   }
 }
 
@@ -529,7 +536,7 @@ class pdoext_DatabaseRecord implements ArrayAccess {
       $referenced_column = $has_many[$internal_name]['referenced_column'];
       $table = $has_many[$internal_name]['table'];
       $column = $has_many[$internal_name]['column'];
-      return pdoext_db()->table($table)->query()->where($column, $this->_row[$referenced_column]);
+      return pdoext_db()->table($table)->select()->where($column, $this->_row[$referenced_column]);
     }
   }
   function __set($name, $value) {
@@ -578,3 +585,4 @@ class pdoext_DatabaseRecord implements ArrayAccess {
         preg_split('/([A-Z]{1}[^A-Z]*)/', $cameled, -1, PREG_SPLIT_DELIM_CAPTURE|PREG_SPLIT_NO_EMPTY)));
   }
 }
+
