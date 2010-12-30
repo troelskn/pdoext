@@ -102,10 +102,10 @@ Example 6: Delete a record
 
     $db->users->delete(array("id" => 42));
 
-Example 7: Query through gateway
+Example 7: Select through gateway
 --
 
-    $db->users->query()->where('name', 'jim%', 'like');
+    $db->users->select()->where('name', 'jim%', 'like');
 
 _Results in:_
 
@@ -116,7 +116,7 @@ _Results in:_
 Example 8: Paginate query
 --
 
-    $selection = $db->users->query()->where('name', 'jim%', 'like')->paginate($page_number);
+    $selection = $db->users->select()->where('name', 'jim%', 'like')->paginate($page_number);
     echo "Viewing page " . $selection->currentPage() . " of " . $selection->totalPages() . "\n";
     foreach ($selection as $row) {
       echo "id: " . $row->id . ", name: " . $row->name . "\n";
