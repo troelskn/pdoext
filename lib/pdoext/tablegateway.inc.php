@@ -475,17 +475,17 @@ class pdoext_Resultset implements Iterator {
  */
 class pdoext_DatabaseRecord implements ArrayAccess {
   public $_errors = array();
-  protected $_row;
+  protected $_data;
   protected $_tablename;
   protected static $_belongs_to = array();
   protected static $_has_many = array();
   function __construct($row, $tablename) {
-    $this->_row = array();
+    $this->_data = array();
     foreach ($row as $key => $value) {
       if (is_callable(array($this, 'set'.$key))) {
         call_user_func(array($this, 'set'.$key), $value);
       } else {
-        $this->_row[$key] = $value;
+        $this->_data[$key] = $value;
       }
     }
     $this->_tablename = $tablename;
@@ -511,23 +511,23 @@ class pdoext_DatabaseRecord implements ArrayAccess {
     return self::$_has_many[$tablename];
   }
   function getArrayCopy() {
-    return $this->_row;
+    return $this->_data;
   }
   function __get($name) {
     $internal_name = $this->underscore($name);
     if (is_callable(array($this, 'get'.$internal_name))) {
       return call_user_func(array($this, 'get'.$internal_name));
     }
-    if (array_key_exists($internal_name, $this->_row)) {
-      return $this->_row[$internal_name];
+    if (array_key_exists($internal_name, $this->_data)) {
+      return $this->_data[$internal_name];
     }
     $belongs_to = self::belongsTo($this->_tablename);
     if (isset($belongs_to[$internal_name])) {
       $referenced_table = $belongs_to[$internal_name]['referenced_table'];
       $referenced_column = $belongs_to[$internal_name]['referenced_column'];
       $column = $belongs_to[$internal_name]['column'];
-      if (isset($this->_row[$column])) {
-        return pdoext_db()->table($referenced_table)->fetch(array($referenced_column => $this->_row[$column]));
+      if (isset($this->_data[$column])) {
+        return pdoext_db()->table($referenced_table)->fetch(array($referenced_column => $this->_data[$column]));
       }
       return null;
     }
@@ -536,7 +536,7 @@ class pdoext_DatabaseRecord implements ArrayAccess {
       $referenced_column = $has_many[$internal_name]['referenced_column'];
       $table = $has_many[$internal_name]['table'];
       $column = $has_many[$internal_name]['column'];
-      return pdoext_db()->table($table)->select()->where($column, $this->_row[$referenced_column]);
+      return pdoext_db()->table($table)->select()->where($column, $this->_data[$referenced_column]);
     }
   }
   function __set($name, $value) {
@@ -544,14 +544,14 @@ class pdoext_DatabaseRecord implements ArrayAccess {
     if (is_callable(array($this, 'set'.$internal_name))) {
       return call_user_func(array($this, 'set'.$internal_name), $value);
     }
-    $this->_row[$internal_name] = $value;
+    $this->_data[$internal_name] = $value;
   }
   function offsetExists($name) {
     $internal_name = $this->underscore($name);
     if (is_callable(array($this, 'get'.$internal_name))) {
       return true;
     }
-    if (array_key_exists($internal_name, $this->_row)) {
+    if (array_key_exists($internal_name, $this->_data)) {
       return true;
     }
     $belongs_to = self::belongsTo($this->_tablename);
@@ -571,7 +571,7 @@ class pdoext_DatabaseRecord implements ArrayAccess {
     $this->__set($key, $value);
   }
   function offsetUnset($key) {
-    unset($this->_row[$key]);
+    unset($this->_data[$key]);
   }
   protected function underscore($cameled) {
     return implode(
