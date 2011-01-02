@@ -118,6 +118,10 @@ class test_UsersGateway extends pdoext_TableGateway {
     }
     return $entity;
   }
+  function scopeWithNameLength($selection) {
+    $selection->addColumn(pdoext_literal('*'));
+    $selection->addColumn(pdoext_literal('length(name)'), 'name_length');
+  }
 }
 
 class TestOfTableGateway extends UnitTestCase {
@@ -201,6 +205,25 @@ class TestOfTableGateway extends UnitTestCase {
     $this->assertEqual("Kimberley", $a[0]->name);
     $this->assertEqual(14, $q->totalCount());
     $this->assertEqual(2, $q->totalPages());
+  }
+  function test_named_scopes_are_callable() {
+    $connection = new pdoext_Connection("sqlite::memory:");
+    $connection->exec(
+      'CREATE TABLE users (
+         id INTEGER PRIMARY KEY AUTOINCREMENT,
+         name VARCHAR(255)
+       )'
+    );
+    $gateway = new test_UsersGateway($connection);
+    $gateway->insert(array('name' => 'Betty'));
+    $q = $gateway->withNameLength();
+    $a = array();
+    foreach ($q as $row) {
+      $a[] = $row;
+    }
+    $this->assertTrue($a[0] instanceOf StdClass);
+    $this->assertEqual("Betty", $a[0]->name);
+    $this->assertEqual(5, $a[0]->name_length);
   }
 }
 
