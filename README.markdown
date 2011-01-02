@@ -83,9 +83,25 @@ Note that *no attempt is done at managing identity of rows*. Each time you call 
 Likewise, you can't assign an object directly:
 
     // NOTE: Won't work!
-    $article->author = $db->authors->whereNameIs("Jim")->one();
+    $author = $db->authors->whereNameIs("Jim")->one();
+    $article->author = $author;
 
 Please understand that *this is by design*, as it spares us from a world of complexity related to the [object-relational impedance mismatch](http://en.wikipedia.org/wiki/Object-relational_impedance_mismatch). If you want this kind of functionality, use a full ORM, such as [Doctrine](http://www.doctrine-project.org/).
+
+Naming
+---
+
+It is assumed that all database column follow a convention of **lowercase_underscore**. The record will automagically convert between php-style *camelCase* and the database naming style. So you can access a column as the camelCase version from php-code. Both will work however. Ex.:
+
+    // Recommended style
+    echo $article->createdAt;
+    echo $article['created_at'];
+
+    // Will also work
+    echo $article->created_at;
+    echo $article['createdAt'];
+
+In the case of accessors, you **must** write the methods in *camelCase*.
 
 Customising Gateways
 ===
@@ -203,6 +219,8 @@ The connection class has support for logging all SQL to a file. This is mostly u
 
 If you are running php from a cli, you may want to have the output echoed out there. Just call `setLogging` without any arguments, and it will write to **stdout**.
 
-You can optionally pass a second argument which is a time offset. Only queries that are slower than this value will be logged. This can be used to single out those performance bottlenecks in you code.
+You can optionally pass a second argument which is a time offset. Only queries that are slower than this value will be logged. This can be used to single out those performance bottlenecks in you code. Eg.:
+
+    $db->setLogging('/var/log/pdoext_slow.log', 0.5);
 
 The log will show where the query was initiated from. This is done by inspecting the callstack and finding the first class that isn't part of pdoext. It will usually make it easier to narrow down where a call came from. Each logline also contains a 6-character hash, which is unique for the process. This allows you to follow loglines even when there are concurrent requests being processed.
