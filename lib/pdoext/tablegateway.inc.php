@@ -562,7 +562,7 @@ class pdoext_DatabaseRecord implements ArrayAccess {
   function __construct($row, $tablename) {
     $this->_data = array();
     foreach ($row as $key => $value) {
-      if (is_callable(array($this, 'set'.$key))) {
+      if (method_exists($this, 'set'.$key)) {
         call_user_func(array($this, 'set'.$key), $value);
       } else {
         $this->_data[$key] = $value;
@@ -593,14 +593,8 @@ class pdoext_DatabaseRecord implements ArrayAccess {
   function getArrayCopy() {
     return $this->_data;
   }
-  function __get($name) {
+  function __call($name, $params) {
     $internal_name = pdoext_underscore($name);
-    if (is_callable(array($this, 'get'.$internal_name))) {
-      return call_user_func(array($this, 'get'.$internal_name));
-    }
-    if (array_key_exists($internal_name, $this->_data)) {
-      return $this->_data[$internal_name];
-    }
     $belongs_to = self::belongsTo($this->_tablename);
     if (isset($belongs_to[$internal_name])) {
       $referenced_table = $belongs_to[$internal_name]['referenced_table'];
@@ -618,31 +612,42 @@ class pdoext_DatabaseRecord implements ArrayAccess {
       $column = $has_many[$internal_name]['column'];
       return pdoext_db()->table($table)->select()->where($column, $this->_data[$referenced_column]);
     }
+    throw new BadMethodCallException("No method $name");
+  }
+  function __get($name) {
+    $internal_name = pdoext_underscore($name);
+    $camel_name = str_replace('_', '', $name);
+    if (method_exists($this, 'get'.$camel_name)) {
+      return call_user_func(array($this, 'get'.$camel_name));
+    }
+    if (array_key_exists($internal_name, $this->_data)) {
+      return $this->_data[$internal_name];
+    }
   }
   function __set($name, $value) {
     $internal_name = pdoext_underscore($name);
-    if (is_callable(array($this, 'set'.$internal_name))) {
-      return call_user_func(array($this, 'set'.$internal_name), $value);
+    $camel_name = str_replace('_', '', $name);
+    if (method_exists($this, 'set'.$camel_name)) {
+      return call_user_func(array($this, 'set'.$camel_name), $value);
     }
     $this->_data[$internal_name] = $value;
   }
-  function offsetExists($name) {
+  function __isset($name) {
     $internal_name = pdoext_underscore($name);
-    if (is_callable(array($this, 'get'.$internal_name))) {
+    $camel_name = str_replace('_', '', $name);
+    if (method_exists($this, 'get'.$camel_name)) {
       return true;
     }
     if (array_key_exists($internal_name, $this->_data)) {
       return true;
     }
-    $belongs_to = self::belongsTo($this->_tablename);
-    if (isset($belongs_to[$internal_name])) {
-      return true;
-    }
-    $has_many = self::hasMany($this->_tablename);
-    if (isset($has_many[$internal_name])) {
-      return true;
-    }
     return false;
+  }
+  function __unset($name) {
+    unset($this->_data[$key]);
+  }
+  function offsetExists($name) {
+    return $this->__isset($name);
   }
   function offsetGet($key) {
     return $this->__get($key);
@@ -651,7 +656,7 @@ class pdoext_DatabaseRecord implements ArrayAccess {
     $this->__set($key, $value);
   }
   function offsetUnset($key) {
-    unset($this->_data[$key]);
+    $this->__unset($key);
   }
 }
 

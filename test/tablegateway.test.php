@@ -294,13 +294,13 @@ class TestOfRecordRelations extends UnitTestCase {
   function test_has_many() {
     $artist = $this->connection->artists->find(1);
     $tmp = array();
-    foreach ($artist->tracks as $track) {
+    foreach ($artist->tracks() as $track) {
       $tmp[] = $track->name;
     }
     $this->assertEqual($tmp, array("Blowing in the wind", "House of the rising sun"));
   }
   function test_belongs_to() {
     $track = $this->connection->tracks->find(1);
-    $this->assertEqual("Bob Dylan", $track->artist->name);
+    $this->assertEqual("Bob Dylan", $track->artist()->name);
   }
 }
