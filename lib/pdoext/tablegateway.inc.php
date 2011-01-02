@@ -24,13 +24,13 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
    * @returns pdoext_Selection
    */
   function __call($name, $params) {
-    if (is_callable(array($this, 'scope'.$name))) {
+    if (method_exists($this, 'scope'.$name)) {
       $selection = $this->select();
       array_unshift($params, $selection);
       call_user_func_array(array($this, 'scope'.$name), $params);
       return $selection;
     }
-    throw new Exception("Undefined function $name");
+    throw new BadMethodCallException("Undefined function $name");
   }
 
   /**
@@ -381,12 +381,12 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate {
     $this->db = $db;
   }
   function __call($name, $params) {
-    if (is_callable(array($this->gateway, 'scope'.$name))) {
+    if (method_exists($this->gateway, 'scope'.$name)) {
       array_unshift($params, $this);
       call_user_func_array(array($this->gateway, 'scope'.$name), $params);
       return $this;
     }
-    throw new Exception("Undefined function $name");
+    throw new BadMethodCallException("Undefined function $name");
   }
   function paginate($current_page, $page_size = 10) {
     $this->current_page = $current_page;
