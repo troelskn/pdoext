@@ -26,8 +26,26 @@ Tablegateways have built-in support for **pagination**:
 
     $selection = $db->users->whereNameLike('jim%')->paginate($page_number);
     echo "Viewing page " . $selection->currentPage() . " of " . $selection->totalPages() . "\n";
-    foreach ($selection as $row) {
-      echo "id: " . $row->id . ", name: " . $row->name . "\n";
+    foreach ($selection as $user) {
+      echo "id: " . $user->id . ", name: " . $user->name . "\n";
+    }
+
+Fetch single record
+---
+
+If you expect one, and only one, record from a query, you can prepend `->one()` to the selection, to fetch the first result. It will throw an exception if there are more than one rows in the result. Eg.:
+
+    $jim = $db->users->whereNameIs('jim')->one();
+
+Chaining conditions
+---
+
+You can apply as many conditions as you wish to a query:
+
+    $selection = $db->users->whereNameLike('jim%');
+    $selection->whereAgeGreaterThan(27);
+    foreach ($selection as $user) {
+      echo "id: " . $user->id . ", name: " . $user->name . "\n";
     }
 
 Customising
