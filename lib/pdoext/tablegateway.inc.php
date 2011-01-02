@@ -409,8 +409,8 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate {
     }
   }
   function totalCount() {
-    $this->executeQuery();
     if ($this->page_size) {
+      $this->executeQuery();
       return $this->total_count;
     }
   }
