@@ -116,7 +116,7 @@ class test_UsersGateway extends pdoext_TableGateway {
     return $entity;
   }
   function scopeWithNameLength($selection) {
-    $selection->addColumn(pdoext_literal('*'));
+    $selection->addColumn('*');
     $selection->addColumn(pdoext_literal('length(name)'), 'name_length');
   }
 }

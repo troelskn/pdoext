@@ -32,6 +32,12 @@ class pdoext_query_Field implements pdoext_query_iExpression {
     $this->columnname;
   }
   function toSql($db) {
+    if ($this->columnname == '*') {
+      if ($this->tablename) {
+        return $db->quoteName($this->tablename).'.'.$this->columnname;
+      }
+      return $this->columnname;
+    }
     return $db->quoteName($this->name);
   }
 }
