@@ -418,10 +418,10 @@ class pdoext_InformationSchema {
         foreach ($this->loadKeys() as $info) {
           if ($info['table_name'] === $table) {
             $meta[] = array(
-              'table' => $row['table_name'],
-              'column' => $row['column_name'],
-              'referenced_table' => $row['referenced_table_name'],
-              'referenced_column' => $row['referenced_column_name'],
+              'table' => $info['table_name'],
+              'column' => $info['column_name'],
+              'referenced_table' => $info['referenced_table_name'],
+              'referenced_column' => $info['referenced_column_name'],
             );
           }
         }
@@ -455,10 +455,10 @@ class pdoext_InformationSchema {
         foreach ($this->loadKeys() as $info) {
           if ($info['referenced_table_name'] === $table) {
             $meta[] = array(
-              'table' => $row['table_name'],
-              'column' => $row['column_name'],
-              'referenced_table' => $row['referenced_table_name'],
-              'referenced_column' => $row['referenced_column_name'],
+              'table' => $info['table_name'],
+              'column' => $info['column_name'],
+              'referenced_table' => $info['referenced_table_name'],
+              'referenced_column' => $info['referenced_column_name'],
             );
           }
         }
