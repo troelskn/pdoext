@@ -26,7 +26,8 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
   function __call($name, $params) {
     if (is_callable(array($this, 'scope'.$name))) {
       $selection = $this->select();
-      call_user_func(array($this, 'scope'.$name), $selection, $params);
+      array_unshift($params, $selection);
+      call_user_func_array(array($this, 'scope'.$name), $params);
       return $selection;
     }
     throw new Exception("Undefined function $name");
@@ -381,7 +382,8 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate {
   }
   function __call($name, $params) {
     if (is_callable(array($this->gateway, 'scope'.$name))) {
-      call_user_func(array($this->gateway, 'scope'.$name), $this, $params);
+      array_unshift($params, $this);
+      call_user_func_array(array($this->gateway, 'scope'.$name), $params);
       return $this;
     }
     throw new Exception("Undefined function $name");
