@@ -19,9 +19,9 @@ class pdoext_Connection extends PDO {
    * Creates a new database connection.
    * Set `$failSafe` to true to have execution exit on error. Otherwise you'll get an exception and the stacktrace will contain your database password. Since such traces are usually logged somewhere, it is an unsafe thing to allow.
    */
-  public function __construct($dsn, $user = null, $password = null, $failSafe = true) {
+  public function __construct($dsn, $user = null, $password = null, $attributes = array(), $failSafe = true) {
     try {
-       parent::__construct($dsn, $user, $password);
+      parent::__construct($dsn, $user, $password, $attributes);
        $this->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     } catch (PDOException $ex) {
       if ($failSafe) {
@@ -255,11 +255,16 @@ class pdoext_Connection extends PDO {
    */
   function table($tablename) {
     if (!isset($this->_tableGatewayCache[$tablename])) {
-      $klass = $tablename.'gateway';
-      if (class_exists($klass)) {
-        $this->_tableGatewayCache[$tablename] = new $klass($tablename, $this);
+      $recordclass = rtrim($tablename, 's'); // @TODO use inflection here
+      if (class_exists($tablename.'gateway')) {
+        $gatewayclass = $tablename.'gateway';
       } else {
-        $this->_tableGatewayCache[$tablename] = new pdoext_TableGateway($tablename, $this);
+        $gatewayclass = 'pdoext_TableGateway';
+      }
+      if (class_exists($recordclass)) {
+        $this->_tableGatewayCache[$tablename] = new $gatewayclass($tablename, $this, $recordclass);
+      } else {
+        $this->_tableGatewayCache[$tablename] = new $gatewayclass($tablename, $this);
       }
     }
     return $this->_tableGatewayCache[$tablename];

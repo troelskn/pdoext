@@ -108,9 +108,6 @@ class TestOfTableGatewayBasicUsecases extends UnitTestCase {
 }
 
 class test_UsersGateway extends pdoext_TableGateway {
-  function __construct($connection) {
-    parent::__construct('users', $connection);
-  }
   function load($row) {
     $entity = new StdClass();
     foreach ($row as $key => $value) {
@@ -149,7 +146,7 @@ class TestOfTableGateway extends UnitTestCase {
          name VARCHAR(255)
        )'
     );
-    $gateway = new test_UsersGateway($connection);
+    $gateway = new test_UsersGateway('users', $connection);
     $gateway->insert(array('name' => 'Anna'));
     $gateway->insert(array('name' => 'Betty'));
     $gateway->insert(array('name' => 'Charlotte'));
@@ -180,7 +177,7 @@ class TestOfTableGateway extends UnitTestCase {
          name VARCHAR(255)
        )'
     );
-    $gateway = new test_UsersGateway($connection);
+    $gateway = new test_UsersGateway('users', $connection);
     $gateway->insert(array('name' => 'Anna'));
     $gateway->insert(array('name' => 'Betty'));
     $gateway->insert(array('name' => 'Charlotte'));
@@ -214,7 +211,7 @@ class TestOfTableGateway extends UnitTestCase {
          name VARCHAR(255)
        )'
     );
-    $gateway = new test_UsersGateway($connection);
+    $gateway = new test_UsersGateway('users', $connection);
     $gateway->insert(array('name' => 'Anna'));
     $q = $gateway->withNameLength();
     $a = array();
@@ -233,7 +230,7 @@ class TestOfTableGateway extends UnitTestCase {
          name VARCHAR(255)
        )'
     );
-    $gateway = new test_UsersGateway($connection);
+    $gateway = new test_UsersGateway('users', $connection);
     $gateway->insert(array('name' => 'Anna'));
     $gateway->insert(array('name' => 'Betty'));
 

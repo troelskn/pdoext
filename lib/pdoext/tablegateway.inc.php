@@ -4,18 +4,25 @@
    */
 class pdoext_TableGateway implements IteratorAggregate, Countable {
   protected $tablename;
-  protected $pkey = null;
-
+  protected $recordtype;
   protected $db;
+
+  protected $pkey = null;
   protected $columns = null;
 
   /**
    *
    * @param  $tablename  string  Name of the table
    * @param  $db         pdoext_Connection  The database connection
+   * @param  $recordtype string  Name of the class to use for records
    */
-  function __construct($tablename, pdoext_Connection $db) {
-    $this->tablename = $tablename;
+  function __construct($tablename, pdoext_Connection $db, $recordtype = 'pdoext_DatabaseRecord') {
+    if (is_null($this->tablename)) {
+      $this->tablename = $tablename;
+    }
+    if (is_null($this->recordtype)) {
+      $this->recordtype = $recordtype;
+    }
     $this->db = $db;
   }
 
@@ -99,7 +106,8 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
    */
   function load($row) {
     if (is_array($row)) {
-      return new pdoext_DatabaseRecord($row, $this->tablename);
+      $classname = $this->recordtype;
+      return new $classname($row, $this->tablename);
     }
   }
 
@@ -123,6 +131,14 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
    */
   function select() {
     return new pdoext_Selection($this, $this->db);
+  }
+
+  /**
+   * Returns a selection query with a condition set.
+   * Shorthand for `select()->where(...)`
+   */
+  function where($left, $right = null, $comparator = '=') {
+    return $this->select()->where($left, $right, $comparator);
   }
 
   /**
