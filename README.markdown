@@ -193,3 +193,16 @@ The `insert` and `update` operations will not proceed if any errors are present 
         }
       }
     }
+
+Logging
+===
+
+The connection class has support for logging all SQL to a file. This is mostly useful during development, for debugging and for performance tuning. To enable logging, call `SetLogging` on the connection:
+
+    $db->setLogging('/var/log/pdoext.log');
+
+If you are running php from a cli, you may want to have the output echoed out there. Just call `setLogging` without any arguments, and it will write to **stdout**.
+
+You can optionally pass a second argument which is a time offset. Only queries that are slower than this value will be logged. This can be used to single out those performance bottlenecks in you code.
+
+The log will show where the query was initiated from. This is done by inspecting the callstack and finding the first class that isn't part of pdoext. It will usually make it easier to narrow down where a call came from. Each logline also contains a 6-character hash, which is unique for the process. This allows you to follow loglines even when there are concurrent requests being processed.
