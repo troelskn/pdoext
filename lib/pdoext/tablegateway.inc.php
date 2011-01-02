@@ -544,11 +544,7 @@ class pdoext_DatabaseRecord implements ArrayAccess {
     if (is_callable(array($this, 'set'.$internal_name))) {
       return call_user_func(array($this, 'set'.$internal_name), $value);
     }
-    if (array_key_exists($internal_name, $this->_row)) {
-      $this->_row[$internal_name] = $value;
-      return;
-    }
-    throw new Exception("Undefined property '$name'");
+    $this->_row[$internal_name] = $value;
   }
   function offsetExists($name) {
     $internal_name = $this->underscore($name);
