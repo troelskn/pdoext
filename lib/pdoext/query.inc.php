@@ -139,6 +139,12 @@ class pdoext_query_Criteria implements pdoext_query_iCriteron {
     $this->criteria[] = $criterion;
     return $criterion;
   }
+  /**
+   * Adds a condition to the WHERE part of the query.
+   * If you pass a string with one or more placeholders (`?`-marks), a bound parameterised expression is assumed, where remaining arguments will be bound by position. See `pdoext_ParameterisedCriteron`.
+   * Otherwise, a plain comparison is assumed, as per `addCriterion`
+   * @returns self
+   */
   function where($left, $right = null, $comparator = '=') {
     if (is_string($left) && strpos($left, '?') !== false) {
       // it's a parameterised criterion

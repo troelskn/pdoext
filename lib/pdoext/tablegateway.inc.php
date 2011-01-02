@@ -367,7 +367,7 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
 /**
  * A single table query.
  *
- * Can be paginated and counted.
+ * Can be paginated.
  */
 class pdoext_Selection extends pdoext_Query implements IteratorAggregate {
   protected $db;
