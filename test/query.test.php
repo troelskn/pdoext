@@ -214,4 +214,11 @@ FROM (
   ORDER BY "con_posttime" DESC
   LIMIT 100) AS "x"');
   }
+
+  function test_select_with_parameterised_criterion() {
+    $db = $this->getConnection();
+    $query = pdoext_query("content");
+    $query->addCriterion(new pdoext_ParameterisedCriteron('con_posttime = ? and con_refresh > ?', array(1234567, 0)));
+    $this->assertSqlEqual($query->toSql($db), "select * from content where con_posttime = '1234567' and con_refresh > '0'");
+  }
 }

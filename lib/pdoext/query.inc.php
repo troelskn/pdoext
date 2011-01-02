@@ -81,6 +81,43 @@ class pdoext_query_Literal implements pdoext_query_iExpression {
   }
 }
 
+/**
+ * A parameterised criterion has placeholders for values, that gets bound on execution.
+ */
+class pdoext_ParameterisedCriteron implements pdoext_query_iCriteron {
+  protected $sql;
+  protected $parameters;
+  function __construct($sql, $parameters = array()) {
+    $this->sql = $sql;
+    $this->parameters = array();
+    foreach ($parameters as $param) {
+      if (is_object($param)) {
+        $this->parameters[] = $param;
+      } else {
+        $this->parameters[] = new pdoext_query_Value($param);
+      }
+    }
+  }
+  function toSql($db) {
+    $this->_params = $this->parameters;
+    $this->_db = $db;
+    $result = preg_replace_callback('/[?]/', array($this, '__callback'), $this->sql);
+    $this->_params = null;
+    $this->_db = null;
+    if (count($this->_params) !== 0) {
+      throw new Exception("Too many parameters");
+    }
+    return $result;
+  }
+  function __callback() {
+    if (count($this->_params) === 0) {
+      throw new Exception("Too few parameters");
+    }
+    $param = array_shift($this->_params);
+    return $param->toSql($this->_db);
+  }
+}
+
 interface pdoext_query_iCriteron {}
 
 /**
@@ -103,7 +140,15 @@ class pdoext_query_Criteria implements pdoext_query_iCriteron {
     return $criterion;
   }
   function where($left, $right = null, $comparator = '=') {
-    $this->addCriterion($left, $right, $comparator);
+    if (is_string($left) && strpos($left, '?') !== false) {
+      // it's a parameterised criterion
+      $get_func_args = get_func_args();
+      $sql = array_shift($get_func_args);
+      $this->addCriterionObject(new pdoext_ParameterisedCriteron($sql, $get_func_args));
+    } else {
+      // it's a an expression
+      $this->addCriterion($left, $right, $comparator);
+    }
     return $this;
   }
   function setConjunctionAnd() {
