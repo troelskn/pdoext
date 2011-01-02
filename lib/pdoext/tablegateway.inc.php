@@ -435,6 +435,13 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate {
     $this->setOrder($order, $direction);
     return $this;
   }
+  function limit($limit, $offset = null) {
+    $this->setLimit($limit);
+    if ($offset !== null) {
+      $this->setOffset($offset);
+    }
+    return $this;
+  }
   function currentPage() {
     return $this->current_page;
   }
