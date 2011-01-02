@@ -257,7 +257,7 @@ class pdoext_Connection extends PDO {
     if (!isset($this->_tableGatewayCache[$tablename])) {
       $klass = $tablename.'gateway';
       if (class_exists($klass)) {
-        $this->_tableGatewayCache[$tablename] = new $klass($this);
+        $this->_tableGatewayCache[$tablename] = new $klass($tablename, $this);
       } else {
         $this->_tableGatewayCache[$tablename] = new pdoext_TableGateway($tablename, $this);
       }
