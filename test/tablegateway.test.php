@@ -215,15 +215,15 @@ class TestOfTableGateway extends UnitTestCase {
        )'
     );
     $gateway = new test_UsersGateway($connection);
-    $gateway->insert(array('name' => 'Betty'));
+    $gateway->insert(array('name' => 'Anna'));
     $q = $gateway->withNameLength();
     $a = array();
     foreach ($q as $row) {
       $a[] = $row;
     }
     $this->assertTrue($a[0] instanceOf StdClass);
-    $this->assertEqual("Betty", $a[0]->name);
-    $this->assertEqual(5, $a[0]->name_length);
+    $this->assertEqual("Anna", $a[0]->name);
+    $this->assertEqual(4, $a[0]->name_length);
   }
 }
 
