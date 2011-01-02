@@ -19,6 +19,19 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
     $this->db = $db;
   }
 
+   /**
+   * Proxy for pdoext_Selection#__call
+   * @returns pdoext_Selection
+   */
+  function __call($name, $params) {
+    if (is_callable(array($this, 'scope'.$name))) {
+      $selection = $this->select();
+      call_user_func(array($this, 'scope'.$name), $selection, $params);
+      return $selection;
+    }
+    throw new Exception("Undefined function $name");
+  }
+
   /**
    * Implements IteratorAggregate::getIterator()
    */
@@ -365,6 +378,13 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate {
     parent::__construct($gateway->getTable());
     $this->gateway = $gateway;
     $this->db = $db;
+  }
+  function __call($name, $params) {
+    if (is_callable(array($this->gateway, 'scope'.$name))) {
+      call_user_func(array($this->gateway, 'scope'.$name), $this, $params);
+      return $this;
+    }
+    throw new Exception("Undefined function $name");
   }
   function paginate($current_page, $page_size = 10) {
     $this->current_page = $current_page;
