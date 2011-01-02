@@ -388,17 +388,30 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate {
   }
   function totalCount() {
     $this->executeQuery();
-    return $this->total_count;
+    if ($this->page_size) {
+      return $this->total_count;
+    }
   }
   function getIterator() {
     $this->executeQuery();
     return $this->result;
   }
+  /**
+   * Returns the first result.
+   */
+  function one() {
+    $this->executeQuery();
+    $row = $this->result->current();
+    if ($this->result->next()) {
+      throw new Exception("Query returned more than one rows");
+    }
+    return $row;
+  }
   protected function executeQuery() {
     if ($this->result) {
       return;
     }
-    if ($this->currentPage()) {
+    if ($this->page_size) {
       $this->setSqlCalcFoundRows();
       $limit = $this->pageSize();
       $offset = max($this->currentPage() - 1, 0) * $this->pageSize();
@@ -412,7 +425,7 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate {
     } else {
       $this->result = $result;
     }
-    if ($this->currentPage()) {
+    if ($this->page_size) {
       if ($this->db->supportsSqlCalcFoundRows()) { // MySql specific
         $result = $this->db->query("SELECT FOUND_ROWS()");
         $row = $result->fetch();
