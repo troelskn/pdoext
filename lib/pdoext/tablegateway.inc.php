@@ -35,7 +35,7 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
    * If the scope doesn't exist, raises a BadMethodCallException.
    */
   function applyScope($selection, $name, $params) {
-    if (method_exists($this, 'scope'.$name)) {
+    if (method_exists($this, 'scope'.$name) && preg_match('/^(where|with)/i', $name)) {
       array_unshift($params, $selection);
       call_user_func_array(array($this, 'scope'.$name), $params);
       return;
