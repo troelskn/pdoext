@@ -225,6 +225,45 @@ class TestOfTableGateway extends UnitTestCase {
     $this->assertEqual("Anna", $a[0]->name);
     $this->assertEqual(4, $a[0]->name_length);
   }
+  function test_auto_scope_for_conditions() {
+    $connection = new pdoext_Connection("sqlite::memory:");
+    $connection->exec(
+      'CREATE TABLE users (
+         id INTEGER PRIMARY KEY AUTOINCREMENT,
+         name VARCHAR(255)
+       )'
+    );
+    $gateway = new test_UsersGateway($connection);
+    $gateway->insert(array('name' => 'Anna'));
+    $gateway->insert(array('name' => 'Betty'));
+
+    // Three ways to fetch by name
+    $betty = $gateway->fetch(array('name' => "Betty"));
+    $this->assertEqual("Betty", $betty->name);
+
+    $betty = $gateway->select()->where('name', "Betty")->one();
+    $this->assertEqual("Betty", $betty->name);
+
+    $betty = $gateway->whereNameIs("Betty")->one();
+    $this->assertEqual("Betty", $betty->name);
+
+    // Two ways to select by name
+    $q = $gateway->select()->where('name', "Betty", "!=");
+    $a = array();
+    foreach ($q as $row) {
+      $a[] = $row;
+    }
+    $this->assertEqual(1, count($a));
+    $this->assertEqual("Anna", $a[0]->name);
+
+    $q = $gateway->whereNameIsNot("Betty");
+    $a = array();
+    foreach ($q as $row) {
+      $a[] = $row;
+    }
+    $this->assertEqual(1, count($a));
+    $this->assertEqual("Anna", $a[0]->name);
+  }
 }
 
 class TestOfRecordRelations extends UnitTestCase {

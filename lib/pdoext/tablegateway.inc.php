@@ -24,13 +24,55 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
    * @returns pdoext_Selection
    */
   function __call($name, $params) {
+    $selection = $this->select();
+    $this->applyScope($selection, $name, $params);
+    return $selection;
+  }
+
+  /**
+   * Modifies a selection query with a named scope.
+   * Will fall back to auto scopes (`whereColumnCondition`)
+   * If the scope doesn't exist, raises a BadMethodCallException.
+   */
+  function applyScope($selection, $name, $params) {
     if (method_exists($this, 'scope'.$name)) {
-      $selection = $this->select();
       array_unshift($params, $selection);
       call_user_func_array(array($this, 'scope'.$name), $params);
-      return $selection;
+      return;
     }
-    throw new BadMethodCallException("Undefined function $name");
+    // Try auto-scope
+    if (preg_match('/^where([a-z]+)(Is|IsNot|Like|NotLike|GreaterThan|LesserThan|IsNull|IsNotNull)$/i', $name, $reg)) {
+      $column = pdoext_underscore($reg[1]);
+      $condition = strtolower($reg[2]);
+      switch ($condition) {
+      case 'is':
+        $selection->addCriterionObject(new pdoext_query_Criterion($column, $params[0], '='));
+        break;
+      case 'isnot':
+        $selection->addCriterionObject(new pdoext_query_Criterion($column, $params[0], '!='));
+        break;
+      case 'like':
+        $selection->addCriterionObject(new pdoext_query_Criterion($column, $params[0], 'LIKE'));
+        break;
+      case 'notlike':
+        $selection->addCriterionObject(new pdoext_query_Criterion($column, $params[0], 'NOT LIKE'));
+        break;
+      case 'greaterthan':
+        $selection->addCriterionObject(new pdoext_query_Criterion($column, $params[0], '>'));
+        break;
+      case 'lesserthan':
+        $selection->addCriterionObject(new pdoext_query_Criterion($column, $params[0], '<'));
+        break;
+      case 'isnull':
+        $selection->addCriterionObject(new pdoext_query_Criterion($column, null, '='));
+        break;
+      case 'isnotnull':
+        $selection->addCriterionObject(new pdoext_query_Criterion($column, null, '!='));
+        break;
+      }
+      return;
+    }
+    throw new BadMethodCallException("Undefined scope $name");
   }
 
   /**
@@ -381,12 +423,8 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate {
     $this->db = $db;
   }
   function __call($name, $params) {
-    if (method_exists($this->gateway, 'scope'.$name)) {
-      array_unshift($params, $this);
-      call_user_func_array(array($this->gateway, 'scope'.$name), $params);
-      return $this;
-    }
-    throw new BadMethodCallException("Undefined function $name");
+    $this->gateway->applyScope($this, $name, $params);
+    return $this;
   }
   function paginate($current_page, $page_size = 10) {
     $this->current_page = $current_page;
@@ -549,7 +587,7 @@ class pdoext_DatabaseRecord implements ArrayAccess {
     return $this->_data;
   }
   function __get($name) {
-    $internal_name = $this->underscore($name);
+    $internal_name = pdoext_underscore($name);
     if (is_callable(array($this, 'get'.$internal_name))) {
       return call_user_func(array($this, 'get'.$internal_name));
     }
@@ -575,14 +613,14 @@ class pdoext_DatabaseRecord implements ArrayAccess {
     }
   }
   function __set($name, $value) {
-    $internal_name = $this->underscore($name);
+    $internal_name = pdoext_underscore($name);
     if (is_callable(array($this, 'set'.$internal_name))) {
       return call_user_func(array($this, 'set'.$internal_name), $value);
     }
     $this->_data[$internal_name] = $value;
   }
   function offsetExists($name) {
-    $internal_name = $this->underscore($name);
+    $internal_name = pdoext_underscore($name);
     if (is_callable(array($this, 'get'.$internal_name))) {
       return true;
     }
@@ -607,13 +645,6 @@ class pdoext_DatabaseRecord implements ArrayAccess {
   }
   function offsetUnset($key) {
     unset($this->_data[$key]);
-  }
-  protected function underscore($cameled) {
-    return implode(
-      '_',
-      array_map(
-        'strtolower',
-        preg_split('/([A-Z]{1}[^A-Z]*)/', $cameled, -1, PREG_SPLIT_DELIM_CAPTURE|PREG_SPLIT_NO_EMPTY)));
   }
 }
 

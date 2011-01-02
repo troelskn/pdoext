@@ -37,6 +37,17 @@ function pdoext_find_caller($skip = '/^pdoext_/i') {
 }
 
 /**
+ * Transforms CamelCase to underscore_case
+ */
+function pdoext_underscore($cameled) {
+  return implode(
+    '_',
+    array_map(
+      'strtolower',
+      preg_split('/([A-Z]{1}[^A-Z]*)/', $cameled, -1, PREG_SPLIT_DELIM_CAPTURE|PREG_SPLIT_NO_EMPTY)));
+}
+
+/**
  * Creates a new query object.
  * @returns pdoext_Query
  */
