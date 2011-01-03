@@ -39,7 +39,7 @@ Conditions
 When selecting from a gateway, you can use a variety of conditions. Assuming a column *name*, the following conditions are built-in:
 
 method                     | SQL
----------------------------+-------------------
+-------------------------- | ------------------
 `whereNameIs($x)`          | name = $x
 `whereNameIsNot($x)`       | name != $x
 `whereNameLike($x)`        | name LIKE $x
