@@ -40,12 +40,12 @@ When selecting from a gateway, you can use a variety of conditions. Assuming a c
 
 method                     | SQL
 -------------------------- | ------------------
-`whereNameIs($x)`          | name = $x
-`whereNameIsNot($x)`       | name != $x
-`whereNameLike($x)`        | name LIKE $x
-`whereNameNotLike($x)`     | name NOT LIKE $x
-`whereNameGreaterThan($x)` | name > $x
-`whereNameLesserThan($x)`  | name < $x
+`whereNameIs("jim")`       | name = "jim"
+`whereNameIsNot("jim")`    | name != "jim"
+`whereNameLike("jim%")`    | name LIKE "jim%"
+`whereNameNotLike("jim%")` | name NOT LIKE "jim%"
+`whereNameGreaterThan(42)` | name > 42
+`whereNameLesserThan(42)`  | name < 42
 `whereNameIsNull()`        | name IS NULL
 `whereNameIsNotNull()`     | name IS NOT NULL
 
