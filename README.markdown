@@ -33,6 +33,24 @@ The table gateway gives you access to simple **CRUD operations** and to querying
 
 No configuration and no userland code is required to use this. **pdoext** will use introspection to figure out how your tables are linked together, using [foreign key](http://en.wikipedia.org/wiki/Foreign_key) constraints.
 
+Conditions
+---
+
+When selecting from a gateway, you can use a variety of conditions. Assuming a column *name*, the following conditions are built-in:
+
+method                     | SQL
+---------------------------+-------------------
+`whereNameIs($x)`          | name = $x
+`whereNameIsNot($x)`       | name != $x
+`whereNameLike($x)`        | name LIKE $x
+`whereNameNotLike($x)`     | name NOT LIKE $x
+`whereNameGreaterThan($x)` | name > $x
+`whereNameLesserThan($x)`  | name < $x
+`whereNameIsNull()`        | name IS NULL
+`whereNameIsNotNull()`     | name IS NOT NULL
+
+You can add your own conditions (See under **scopes** for details).
+
 Pagination
 ---
 
