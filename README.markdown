@@ -3,9 +3,20 @@ About
 
 **pdoext** is a database abstraction layer for php. Its main features are **zero-configuration** and an **elegant api**.
 
+**pdoext** extends **[pdo](http://www.php.net/manual/en/class.pdo.php)** and adds missing functionality, such as **logging** and **introspection** ; convenience functionality such as **quoting of fields** and assertion of **transactions** ; as well as provides some workarounds for compatibility problems (mainly with [sqlite](http://www.sqlite.org/))
+
+Most notably, it provides a **tablegateway**, that abstracts most of the rudimentary SQL out in an intuitive and readable interface. Scroll down for examples.
+
 It is *not* a full-blown ORM; You still need to understand the underlying database to use it efficiently. This helps to *keep the complexity down*, making pdoext relatively simple to comprehend and extend. In particular, *pdoext doesn't manage* **object identity** or **inheritance**. Nor does it isolate your application code completely from the **relational paradigm** of databases.
 
-**pdoext** extends **[pdo](http://www.php.net/manual/en/function.PDO-construct.php)** and adds missing functionality, such as **logging** and **introspection** ; convenience functionality such as **quoting of fields** and assertion of **transactions** ; as well as provides some workarounds for compatibility problems (mainly with [sqlite](http://www.sqlite.org/))
+Connection
+===
+
+Since **pdoext** extends pdo, a connection follows the same interface. To connect, to a local MySql server, you could use the following code:
+
+    $db = new pdoext_Connection('mysql:dbname=testdb;host=127.0.0.1', 'root', 'secret');
+
+[Read more here](http://www.php.net/manual/en/function.PDO-construct.php).
 
 Table Gateway
 ===
