@@ -589,7 +589,7 @@ class pdoext_DatabaseRecord implements ArrayAccess {
   protected static function belongsTo($tablename) {
     if (!isset(self::$_belongs_to[$tablename])) {
       self::$_belongs_to[$tablename] = array();
-      foreach (pdoext_db()->getInformationSchema()->getForeignKeys($tablename) as $info) {
+      foreach (pdoext()->getInformationSchema()->getForeignKeys($tablename) as $info) {
         $name = preg_replace('/_id$/', '', $info['column']);
         self::$_belongs_to[$tablename][$name] = $info;
       }
@@ -599,7 +599,7 @@ class pdoext_DatabaseRecord implements ArrayAccess {
   protected static function hasMany($tablename) {
     if (!isset(self::$_has_many[$tablename])) {
       self::$_has_many[$tablename] = array();
-      foreach (pdoext_db()->getInformationSchema()->getReferencingKeys($tablename) as $info) {
+      foreach (pdoext()->getInformationSchema()->getReferencingKeys($tablename) as $info) {
         $name = $info['table'];
         self::$_has_many[$tablename][$name] = $info;
       }
@@ -617,7 +617,7 @@ class pdoext_DatabaseRecord implements ArrayAccess {
       $referenced_column = $belongs_to[$internal_name]['referenced_column'];
       $column = $belongs_to[$internal_name]['column'];
       if (isset($this->_data[$column])) {
-        return pdoext_db()->table($referenced_table)->fetch(array($referenced_column => $this->_data[$column]));
+        return pdoext()->table($referenced_table)->fetch(array($referenced_column => $this->_data[$column]));
       }
       return null;
     }
@@ -626,7 +626,7 @@ class pdoext_DatabaseRecord implements ArrayAccess {
       $referenced_column = $has_many[$internal_name]['referenced_column'];
       $table = $has_many[$internal_name]['table'];
       $column = $has_many[$internal_name]['column'];
-      return pdoext_db()->table($table)->select()->where($column, $this->_data[$referenced_column]);
+      return pdoext()->table($table)->select()->where($column, $this->_data[$referenced_column]);
     }
     throw new BadMethodCallException("No method $name");
   }

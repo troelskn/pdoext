@@ -12,19 +12,22 @@ It is *not* a full-blown ORM; You still need to understand the underlying databa
 Connection
 ===
 
-Since **pdoext** extends pdo, a connection follows the same interface. To connect to a local MySql server, you could use the following code:
+The most common way to use pdoext is through the connection manager. This only allows you to have one active database connection at a time, but that is usually not a problem. To use, specify the following information some where in your application:
 
-    $db = new pdoext_Connection('mysql:dbname=testdb;host=127.0.0.1', 'root', 'secret');
+    $GLOBALS['pdoext_connection']['dsn'] = "mysql:dbname=testdb;host=127.0.0.1";
+    $GLOBALS['pdoext_connection']['username'] = "root";
+    $GLOBALS['pdoext_connection']['password'] = "secret";
 
-[Read more here](http://www.php.net/manual/en/function.PDO-construct.php).
+The parameters are the same as given to the constructor of a [pdo connection](http://www.php.net/manual/en/function.PDO-construct.php).
+
+Once this has been set, you can grab the gloabally shared connection through `pdoext()`.
 
 Table Gateway
 ===
 
 The table gateway gives you access to simple **CRUD operations** and to querying for rows. It returns rows in an **active record** style wrapper, that can be extended in user land code. Here's how you would typically use the tablegateway in an application:
 
-
-    foreach ($db->articles->whereStatusIs('published') as $article) {
+    foreach (pdoext()->articles->whereStatusIs('published') as $article) {
       print $article->title . " - " . $article->author()->name . "\n";
     }
 
@@ -35,7 +38,7 @@ Pagination
 
 Tablegateways have built-in support for **pagination**:
 
-    $selection = $db->users->whereNameLike('jim%')->paginate($page_number);
+    $selection = pdoext()->users->whereNameLike('jim%')->paginate($page_number);
     echo "Viewing page " . $selection->currentPage() . " of " . $selection->totalPages() . "\n";
     foreach ($selection as $user) {
       echo "id: " . $user->id . ", name: " . $user->name . "\n";
@@ -46,14 +49,14 @@ Fetch single record
 
 If you expect one, and only one, record from a query, you can prepend `->one()` to the selection, to fetch the first result. It will throw an exception if there are more than one rows in the result. Eg.:
 
-    $jim = $db->users->whereNameIs('jim')->one();
+    $jim = pdoext()->users->whereNameIs('jim')->one();
 
 Chaining conditions
 ---
 
 You can apply as many conditions as you wish to a query:
 
-    $selection = $db->users->whereNameLike('jim%');
+    $selection = pdoext()->users->whereNameLike('jim%');
     $selection->whereAgeGreaterThan(27);
     foreach ($selection as $user) {
       echo "id: " . $user->id . ", name: " . $user->name . "\n";
@@ -96,7 +99,7 @@ Foreign keys
 
 If a table defines any foreign keys, you can access them on a record. For example:
 
-    $article = $db->articles->whereTitleIs("Lorem Ipsum")->one();
+    $article = pdoext()->articles->whereTitleIs("Lorem Ipsum")->one();
     $author = $article->author();
 
 It also works the other way:
@@ -112,7 +115,7 @@ Note that *no attempt is done at managing identity of rows*. Each time you call 
 Likewise, you can't assign an object directly:
 
     // NOTE: Won't work!
-    $author = $db->authors->whereNameIs("Jim")->one();
+    $author = pdoext()->authors->whereNameIs("Jim")->one();
     $article->author = $author;
 
 Please understand that *this is by design*, as it spares us from a world of complexity related to the [object-relational impedance mismatch](http://en.wikipedia.org/wiki/Object-relational_impedance_mismatch). If you want this kind of functionality, use a full ORM, such as [Doctrine](http://www.doctrine-project.org/).
@@ -148,7 +151,7 @@ To help keeping your code elegant and readable, you can create custom **scopes**
 
 And now you can use the scope like this:
 
-    foreach ($db->articles->wherePublished()->limit(10) as $article) {
+    foreach (pdoext()->articles->wherePublished()->limit(10) as $article) {
       print $article->title . " - " . $article->author()->name . "\n";
     }
 
@@ -168,7 +171,7 @@ A scope should always begin with *where* or *with*; The convention being that *w
 
 We can now use as follows:
 
-    foreach ($db->articles->withAuthor()->wherePublished()->limit(10) as $article) {
+    foreach (pdoext()->articles->withAuthor()->wherePublished()->limit(10) as $article) {
       print $article->title . " - " . $article->author_name . "\n";
     }
 
@@ -179,15 +182,15 @@ Complex queries
 
 For complex queries, you can either use the object oriented querying api, or if you prefer to write your SQL by hand, you can use parameterised queries. If you just want to add to the "where" part, use this format:
 
-    $db->articles->where('status = ?', 'published');
+    pdoext()->articles->where('status = ?', 'published');
 
 Or if you want to write the entire SQL by your self:
 
-    $db->articles->query("SELECT * FROM articles");
+    pdoext()->articles->query("SELECT * FROM articles");
 
 With parameters:
 
-    $db->articles->pexecute("SELECT * FROM articles WHERE status = :status", array(':status' => 'published'));
+    pdoext()->articles->pexecute("SELECT * FROM articles WHERE status = :status", array(':status' => 'published'));
 
 CRUD
 ===
@@ -196,23 +199,23 @@ The tablegateway provides functions to **insert**, **update** and **delete** on 
 
 To **insert**:
 
-    $article_id = $db->articles->insert(array('name' => "Jim"));
+    $article_id = pdoext()->articles->insert(array('name' => "Jim"));
 
 When **updating**, the *primary key* value from the first argument is used:
 
     // Rename to John where id = 42
-    $db->articles->update(array('id' => 42, 'name' => "John"));
+    pdoext()->articles->update(array('id' => 42, 'name' => "John"));
 
 You can optionally pass a second argument with the conditions for the update:
 
     // Rename all Jim's to John
-    $db->articles->update(array('name' => "John"), array('name' => "Jim"));
+    pdoext()->articles->update(array('name' => "John"), array('name' => "Jim"));
 
 For completeness' sake, here's how to **delete** a row:
 
 
     // Delete record with id = 42
-    $db->articles->delete(array('id' => 42));
+    pdoext()->articles->delete(array('id' => 42));
 
 Validations
 ---
@@ -244,12 +247,12 @@ Logging
 
 The connection class has support for logging all SQL to a file. This is mostly useful during development, for debugging and for performance tuning. To enable logging, call `SetLogging` on the connection:
 
-    $db->setLogging('/var/log/pdoext.log');
+    pdoext()->setLogging('/var/log/pdoext.log');
 
 If you are running php from a cli, you may want to have the output echoed out there. Just call `setLogging` without any arguments, and it will write to **stdout**.
 
 You can optionally pass a second argument which is a time offset. Only queries that are slower than this value will be logged. This can be used to single out those performance bottlenecks in you code. Eg.:
 
-    $db->setLogging('/var/log/pdoext_slow.log', 0.5);
+    pdoext()->setLogging('/var/log/pdoext_slow.log', 0.5);
 
 The log will show where the query was initiated from. This is done by inspecting the callstack and finding the first class that isn't part of pdoext. It will usually make it easier to narrow down where a call came from. Each logline also contains a 6-character hash, which is unique for the process. This allows you to follow loglines even when there are concurrent requests being processed.

@@ -81,12 +81,20 @@ function pdoext_literal($sql) {
 
 /**
  * Global accessor to return a database connection.
- * Uses `$GLOBALS['pdoext_connection']['callback']` to instantiate on the first invocation.
+ * Uses `$GLOBALS['pdoext_connection']['constructor']` to instantiate on the first invocation.
  * @returns pdoext_Connection
  */
-function pdoext_db() {
+function pdoext() {
   if (!isset($GLOBALS['pdoext_connection']['instance'])) {
-    $GLOBALS['pdoext_connection']['instance'] = call_user_func($GLOBALS['pdoext_connection']['callback']);
+    $ctor = $GLOBALS['pdoext_connection']['constructor'];
+    $GLOBALS['pdoext_connection']['instance'] = call_user_func($ctor, $GLOBALS['pdoext_connection']);
   }
   return $GLOBALS['pdoext_connection']['instance'];
+}
+
+/**
+ * db constructor that returns an instance of pdoext
+ */
+function create_pdoext_connection($params) {
+  return new pdoext_Connection($params['dsn'], $params['username'], $params['password']);
 }
