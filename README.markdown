@@ -12,7 +12,7 @@ It is *not* a full-blown ORM; You still need to understand the underlying databa
 Connection
 ===
 
-Since **pdoext** extends pdo, a connection follows the same interface. To connect, to a local MySql server, you could use the following code:
+Since **pdoext** extends pdo, a connection follows the same interface. To connect to a local MySql server, you could use the following code:
 
     $db = new pdoext_Connection('mysql:dbname=testdb;host=127.0.0.1', 'root', 'secret');
 
