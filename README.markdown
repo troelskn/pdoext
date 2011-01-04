@@ -263,14 +263,21 @@ The `insert` and `update` operations will not proceed if any errors are present 
 Logging
 ===
 
-The connection class has support for logging all SQL to a file. This is mostly useful during development, for debugging and for performance tuning. To enable logging, call `SetLogging` on the connection:
+The connection class has support for logging all SQL to a file. This is mostly useful during development, for debugging and for performance tuning. To enable logging, specify it in the configuration:
 
-    pdoext()->setLogging('/var/log/pdoext.log');
+    $GLOBALS['pdoext_connection']['log_destination'] = "/var/log/pdoext.log";
+
+For debugging purposes you may some times want to turn logging on and off in runtime. You can do this by calling `setLogging` on the connection object:
+
+    pdoext()->setLogging('/var/log/pdoext_slow.log');
 
 If you are running php from a cli, you may want to have the output echoed out there. Just call `setLogging` without any arguments, and it will write to **stdout**.
 
-You can optionally pass a second argument which is a time offset. Only queries that are slower than this value will be logged. This can be used to single out those performance bottlenecks in you code. Eg.:
+You can optionally specify `log_time`. Only queries that are slower than this value will be logged. This can be used to single out those performance bottlenecks in you code. Eg.:
 
-    pdoext()->setLogging('/var/log/pdoext_slow.log', 0.5);
+    $GLOBALS['pdoext_connection']['log_destination'] = "/var/log/pdoext_slow.log";
+    $GLOBALS['pdoext_connection']['log_time'] = 0.5;
+
+In this case only queries that take more than half a second will be logged.
 
 The log will show where the query was initiated from. This is done by inspecting the callstack and finding the first class that isn't part of pdoext. It will usually make it easier to narrow down where a call came from. Each logline also contains a 6-character hash, which is unique for the process. This allows you to follow loglines even when there are concurrent requests being processed.

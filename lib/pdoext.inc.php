@@ -1,4 +1,8 @@
 <?php
+require_once 'pdoext/connection.inc.php';
+require_once 'pdoext/query.inc.php';
+require_once 'pdoext/tablegateway.inc.php';
+
 /**
  * Indents a string by two spaces, even if the string has linebreaks.
  */
@@ -96,5 +100,9 @@ function pdoext() {
  * db constructor that returns an instance of pdoext
  */
 function create_pdoext_connection($params) {
-  return new pdoext_Connection($params['dsn'], $params['username'], $params['password']);
+  $db = new pdoext_Connection($params['dsn'], $params['username'], $params['password']);
+  if (isset($params['log_destination'])) {
+    $db->setLogging($params['log_destination'], isset($params['log_time']) ? $params['log_time'] : null);
+  }
+  return $db;
 }
