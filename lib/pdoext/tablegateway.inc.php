@@ -573,8 +573,6 @@ class pdoext_DatabaseRecord implements ArrayAccess {
   public $_errors = array();
   protected $_data;
   protected $_tablename;
-  protected static $_belongs_to = array();
-  protected static $_has_many = array();
   function __construct($row, $tablename) {
     $this->_data = array();
     foreach ($row as $key => $value) {
@@ -586,32 +584,12 @@ class pdoext_DatabaseRecord implements ArrayAccess {
     }
     $this->_tablename = $tablename;
   }
-  protected static function belongsTo($tablename) {
-    if (!isset(self::$_belongs_to[$tablename])) {
-      self::$_belongs_to[$tablename] = array();
-      foreach (pdoext()->getInformationSchema()->getForeignKeys($tablename) as $info) {
-        $name = preg_replace('/_id$/', '', $info['column']);
-        self::$_belongs_to[$tablename][$name] = $info;
-      }
-    }
-    return self::$_belongs_to[$tablename];
-  }
-  protected static function hasMany($tablename) {
-    if (!isset(self::$_has_many[$tablename])) {
-      self::$_has_many[$tablename] = array();
-      foreach (pdoext()->getInformationSchema()->getReferencingKeys($tablename) as $info) {
-        $name = $info['table'];
-        self::$_has_many[$tablename][$name] = $info;
-      }
-    }
-    return self::$_has_many[$tablename];
-  }
   function getArrayCopy() {
     return $this->_data;
   }
   function __call($name, $params) {
     $internal_name = pdoext_underscore($name);
-    $belongs_to = self::belongsTo($this->_tablename);
+    $belongs_to = pdoext()->getInformationSchema()->belongsTo($this->_tablename);
     if (isset($belongs_to[$internal_name])) {
       $referenced_table = $belongs_to[$internal_name]['referenced_table'];
       $referenced_column = $belongs_to[$internal_name]['referenced_column'];
@@ -621,7 +599,7 @@ class pdoext_DatabaseRecord implements ArrayAccess {
       }
       return null;
     }
-    $has_many = self::hasMany($this->_tablename);
+    $has_many = pdoext()->getInformationSchema()->hasMany($this->_tablename);
     if (isset($has_many[$internal_name])) {
       $referenced_column = $has_many[$internal_name]['referenced_column'];
       $table = $has_many[$internal_name]['table'];

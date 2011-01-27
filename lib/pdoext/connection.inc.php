@@ -355,6 +355,8 @@ class pdoext_MetaNotSupportedException extends Exception {
  */
 class pdoext_InformationSchema {
   protected $connection;
+  protected $has_many = array();
+  protected $belongs_to = array();
   function __construct($connection) {
     $this->connection = $connection;
   }
@@ -484,6 +486,27 @@ class pdoext_InformationSchema {
         throw new pdoext_MetaNotSupportedException();
     }
   }
+  function belongsTo($tablename) {
+    if (!isset($this->belongs_to[$tablename])) {
+      $this->belongs_to[$tablename] = array();
+      foreach ($this->getForeignKeys($tablename) as $info) {
+        $name = preg_replace('/_id$/', '', $info['column']);
+        $this->belongs_to[$tablename][$name] = $info;
+      }
+    }
+    return $this->belongs_to[$tablename];
+  }
+  function hasMany($tablename) {
+    if (!isset($this->has_many[$tablename])) {
+      $this->has_many[$tablename] = array();
+      foreach ($this->getReferencingKeys($tablename) as $info) {
+        $name = $info['table'];
+        $this->has_many[$tablename][$name] = $info;
+      }
+    }
+    return $this->has_many[$tablename];
+  }
+
   /**
    * @internal
    */
