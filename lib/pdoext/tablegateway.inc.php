@@ -162,7 +162,7 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
   function getPKey() {
     if ($this->pkey === null) {
       $this->pkey = array();
-      $columns = $this->reflect();
+      $columns = $this->getColumns();
       foreach ($columns as $column => $info) {
         if ($info['pk']) {
           $this->pkey[] = $column;
@@ -179,6 +179,13 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
   }
 
   /**
+   * @return pdoext_Connection
+   */
+  function getDatabaseConnection() {
+    return $this->db;
+  }
+
+  /**
    * @return string
    */
   function getTable() {
@@ -189,8 +196,19 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
    * Returns the column names
    * @return [] string
    */
-  function getColumns() {
-    return array_keys($this->reflect());
+  function getColumnNames() {
+    return array_keys($this->getColumns());
+  }
+
+  /**
+   * Introspects the schema, and returns an array of the table's columns.
+   * @return [] hash
+   */
+  protected function getColumns() {
+    if (!$this->columns) {
+      $this->columns = $this->db->getInformationSchema()->getColumns($this->tablename);
+    }
+    return $this->columns;
   }
 
   /**
@@ -199,23 +217,12 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
    */
   function getListableColumns() {
     $columns = array();
-    foreach ($this->reflect() as $column => $info) {
+    foreach ($this->getColumns() as $column => $info) {
       if (!$info['blob']) {
         $columns[] = $column;
       }
     }
     return $columns;
-  }
-
-  /**
-   * Introspects the schema, and returns an array of the table's columns.
-   * @return [] hash
-   */
-  protected function reflect() {
-    if (!$this->columns) {
-      $this->columns = $this->db->getInformationSchema()->getColumns($this->tablename);
-    }
-    return $this->columns;
   }
 
   protected function marshal($object) {
@@ -318,7 +325,7 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
     $columns = array();
     $values = array();
     $bind = array();
-    foreach ($this->getColumns() as $column) {
+    foreach ($this->getColumnNames() as $column) {
       if (array_key_exists($column, $data)) {
         $value = $data[$column];
         $columns[] = $this->db->quoteName($column);
@@ -367,7 +374,7 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
     $query = "UPDATE " . $this->db->quoteName($this->tablename) . "\nSET";
     $columns = array();
     $bind = array();
-    foreach ($this->getColumns() as $column) {
+    foreach ($this->getColumnNames() as $column) {
       if (array_key_exists($column, $data) && !in_array($column, $pk)) {
         $value = $data[$column];
         if ($value instanceOf pdoext_query_iExpression) {
