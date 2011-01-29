@@ -129,7 +129,7 @@ Note that *no attempt is done at managing identity of rows*. Each time you call 
 Likewise, you can't assign an object directly:
 
     // NOTE: Won't work!
-    $article->author = $db->authors->whereNameIs("Jim")->one();;
+    $article->author = $db->authors->whereNameIs("Jim")->one();
 
 Please understand that *this is by design*, as it spares us from a world of complexity related to the [object-relational impedance mismatch](http://en.wikipedia.org/wiki/Object-relational_impedance_mismatch). If you want this kind of functionality, use a full ORM, such as [Doctrine](http://www.doctrine-project.org/).
 
@@ -185,7 +185,7 @@ A scope should always begin with *where* or *with*; The convention being that *w
 We can now use as follows:
 
     foreach ($db->articles->withAuthor()->wherePublished()->limit(10) as $article) {
-      print $article->title . " - " . $article->author_name . "\n";
+      print $article->title . " - " . $article->authorName . "\n";
     }
 
 Behind the scenes, this will only execute a single SQL query, left joining authors on articles. Otherwise we would issue a new query for author on each iteration.
