@@ -107,7 +107,7 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
   function load($row) {
     if (is_array($row)) {
       $classname = $this->recordtype;
-      return new $classname($row, $this->tablename);
+      return new $classname($row, $this);
     }
   }
 
@@ -579,8 +579,8 @@ class pdoext_Resultset implements Iterator {
 class pdoext_DatabaseRecord implements ArrayAccess {
   public $_errors = array();
   protected $_data;
-  protected $_tablename;
-  function __construct($row, $tablename) {
+  protected $_table_gateway;
+  function __construct($row, $table_gateway) {
     $this->_data = array();
     foreach ($row as $key => $value) {
       if (method_exists($this, 'set'.$key)) {
@@ -589,29 +589,30 @@ class pdoext_DatabaseRecord implements ArrayAccess {
         $this->_data[$key] = $value;
       }
     }
-    $this->_tablename = $tablename;
+    $this->_table_gateway = $table_gateway;
   }
   function getArrayCopy() {
     return $this->_data;
   }
   function __call($name, $params) {
     $internal_name = pdoext_underscore($name);
-    $belongs_to = pdoext()->getInformationSchema()->belongsTo($this->_tablename);
+    $db = $this->_table_gateway->getDatabaseConnection();
+    $belongs_to = $db->getInformationSchema()->belongsTo($this->_table_gateway->getTable());
     if (isset($belongs_to[$internal_name])) {
       $referenced_table = $belongs_to[$internal_name]['referenced_table'];
       $referenced_column = $belongs_to[$internal_name]['referenced_column'];
       $column = $belongs_to[$internal_name]['column'];
       if (isset($this->_data[$column])) {
-        return pdoext()->table($referenced_table)->fetch(array($referenced_column => $this->_data[$column]));
+        return $db->table($referenced_table)->fetch(array($referenced_column => $this->_data[$column]));
       }
       return null;
     }
-    $has_many = pdoext()->getInformationSchema()->hasMany($this->_tablename);
+    $has_many = $db->getInformationSchema()->hasMany($this->_table_gateway->getTable());
     if (isset($has_many[$internal_name])) {
       $referenced_column = $has_many[$internal_name]['referenced_column'];
       $table = $has_many[$internal_name]['table'];
       $column = $has_many[$internal_name]['column'];
-      return pdoext()->table($table)->select()->where($column, $this->_data[$referenced_column]);
+      return $db->table($table)->select()->where($column, $this->_data[$referenced_column]);
     }
     throw new BadMethodCallException("No method $name");
   }
@@ -660,4 +661,3 @@ class pdoext_DatabaseRecord implements ArrayAccess {
     $this->__unset($key);
   }
 }
-
