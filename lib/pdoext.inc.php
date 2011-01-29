@@ -82,27 +82,3 @@ function pdoext_value($value) {
 function pdoext_literal($sql) {
   return new pdoext_query_Literal($sql);
 }
-
-/**
- * Global accessor to return a database connection.
- * Uses `$GLOBALS['pdoext_connection']['constructor']` to instantiate on the first invocation.
- * @returns pdoext_Connection
- */
-function pdoext() {
-  if (!isset($GLOBALS['pdoext_connection']['instance'])) {
-    $ctor = $GLOBALS['pdoext_connection']['constructor'];
-    $GLOBALS['pdoext_connection']['instance'] = call_user_func($ctor, $GLOBALS['pdoext_connection']);
-  }
-  return $GLOBALS['pdoext_connection']['instance'];
-}
-
-/**
- * db constructor that returns an instance of pdoext
- */
-function create_pdoext_connection($params) {
-  $db = new pdoext_Connection($params['dsn'], $params['username'], $params['password']);
-  if (isset($params['log_destination'])) {
-    $db->setLogging($params['log_destination'], isset($params['log_time']) ? $params['log_time'] : null);
-  }
-  return $db;
-}

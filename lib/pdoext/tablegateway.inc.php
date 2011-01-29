@@ -130,7 +130,7 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
    * Returns a selection query.
    */
   function select() {
-    return new pdoext_Selection($this, $this->db);
+    return new pdoext_Selection($this);
   }
 
   /**
@@ -440,10 +440,10 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate {
   protected $result;
   protected $current_page;
   protected $page_size;
-  function __construct(pdoext_TableGateway $gateway, pdoext_Connection $db) {
+  function __construct(pdoext_TableGateway $gateway) {
     parent::__construct($gateway->getTable());
     $this->gateway = $gateway;
-    $this->db = $db;
+    $this->db = $gateway->getDatabaseConnection();
   }
   function __call($name, $params) {
     $this->gateway->applyScope($this, $name, $params);
