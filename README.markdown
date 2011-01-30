@@ -205,6 +205,34 @@ With parameters:
 
     $db->articles->pexecute("SELECT * FROM articles WHERE status = :status", array(':status' => 'published'));
 
+Query API
+---
+
+pdoext has an object oriented query building api, that can be used for constructing complex queries with. The benefit of doing this, over writing SQL by hand, is that it's fairly easy to incrementally build up the query. This could be used for creating a query based on user input (Such as a search) and it is also useful from within scopes. The interface is heavily inspired by Hibernate.
+
+The most common usage is to add a criterion (condition). This is done in the following way:
+
+    $selection->addCriterion('name', 'Jim'); // WHERE name = 'Jim'
+
+`addCriterion` takes a third parameter, which is the comparison operator. So you can do:
+
+    $selection->addCriterion('name', 'Jim', '!='); // WHERE name != 'Jim'
+
+If you want to compare two fields against each other, rather than field to value, use `addConstraint` instead:
+
+    $selection->addCriterion('name', 'first_name'); // WHERE name = first_name
+
+This is mostly useful when doing joins. You can join a table like this:
+
+    $selection->addJoin('other_table'); // JOIN other_table
+
+`addJoin` returns a join object, where you can add criteria to. Using `addConstraint` from above, this is a typical join:
+
+    $join = $selection->addJoin('authors', 'LEFT JOIN');      // LEFT JOIN authors
+    $join->addConstraint('authors.id', 'articles.author_id'); // ON authors.id = articles.author_id
+
+There are more options available - Have a look at the tests and sources.
+
 CRUD
 ===
 
