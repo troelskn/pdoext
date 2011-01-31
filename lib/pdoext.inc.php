@@ -55,7 +55,7 @@ class pdoext_DummyConnection {
   function quote($name) {
     return $name;
   }
-  function quoteNames($name) {
+  function quoteName($name) {
     return $name;
   }
 }
