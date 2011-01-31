@@ -146,6 +146,22 @@ class pdoext_query_Criteria implements pdoext_query_iCriteron {
     return $criterion;
   }
   /**
+   * Removes criteria that looks similar to the given criterion.
+   */
+  function removeCriterion($left, $right = null, $comparator = '=') {
+    return $this->removeCriterionObject($left instanceof pdoext_query_iCriteron ? $left : new pdoext_query_Criterion($left, $right, $comparator));
+  }
+  function removeCriterionObject(pdoext_query_iCriteron $criterion) {
+    $conn = new pdoext_DummyConnection();
+    $tmp = array();
+    foreach ($this->criteria as $crit) {
+      if (!$crit->toSql($conn) == $criterion->toSql($conn)) {
+	$tmp[] = $crit;
+      }
+    }
+    $this->criteria = $tmp;
+  }
+  /**
    * Adds a condition to the WHERE part of the query.
    * If you pass a string with one or more placeholders (`?`-marks), a bound parameterised expression is assumed, where remaining arguments will be bound by position. See `pdoext_ParameterisedCriteron`.
    * Otherwise, a plain comparison is assumed, as per `addCriterion`

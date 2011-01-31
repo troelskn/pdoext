@@ -51,6 +51,14 @@ function pdoext_underscore($cameled) {
       preg_split('/([A-Z]{1}[^A-Z]*)/', $cameled, -1, PREG_SPLIT_DELIM_CAPTURE|PREG_SPLIT_NO_EMPTY)));
 }
 
+class pdoext_DummyConnection {
+  function quote($name) {
+    return $name;
+  }
+  function quoteNames($name) {
+    return $name;
+  }
+}
 /**
  * Creates a new query object.
  * @returns pdoext_Query
