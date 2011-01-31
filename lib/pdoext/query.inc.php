@@ -259,7 +259,7 @@ class pdoext_Query extends pdoext_query_Criteria implements pdoext_query_iExpres
   protected $straight_join = false;
 
   function __construct($tablename, $alias = null) {
-    parent::__construct();
+    parent::__construct('AND');
     $this->tablename = $tablename;
     $this->alias = $alias;
   }

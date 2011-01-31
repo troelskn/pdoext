@@ -182,7 +182,7 @@ SELECT *
 FROM `people`
 WHERE
   `first_name` = 'John'
-  OR account_id IN (
+  AND account_id IN (
     SELECT *
     FROM `accounts`
     WHERE
