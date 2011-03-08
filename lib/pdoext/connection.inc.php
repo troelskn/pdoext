@@ -22,7 +22,7 @@ class pdoext_Connection extends PDO {
   public function __construct($dsn, $user = null, $password = null, $attributes = array(), $failSafe = true) {
     try {
       parent::__construct($dsn, $user, $password, $attributes);
-       $this->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+      $this->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     } catch (PDOException $ex) {
       if ($failSafe) {
         die("Database connection failed: " . $ex->getMessage() . " in file ".__FILE__." at line ".__LINE__);
