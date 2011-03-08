@@ -202,7 +202,7 @@ class pdoext_Connection extends PDO {
    */
   public function beginTransaction() {
     if ($this->_inTransaction) {
-      throw new pdoext_AlreadyInTransactionException(sprintf("Already in transaction. Tansaction started at line %s in file %s", $this->_inTransaction[0], $this->_inTransaction[1]));
+      throw new pdoext_AlreadyInTransactionException(sprintf("Already in transaction. Transaction started at line %s in file %s", $this->_inTransaction[0], $this->_inTransaction[1]));
     }
     $result = parent::beginTransaction();
     $stack = debug_backtrace();
