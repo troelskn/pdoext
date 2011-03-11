@@ -141,6 +141,10 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
     return $this->select()->where($left, $right, $comparator);
   }
 
+  function paginate($current_page, $page_size = 10) {
+    return $this->select()->paginate($current_page, $page_size);
+  }
+
   /**
    * Executes an SQL statement, returning a result set as a pdoext_Resultset object
    */
