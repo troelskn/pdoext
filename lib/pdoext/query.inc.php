@@ -334,7 +334,7 @@ class pdoext_Query extends pdoext_query_Criteria implements pdoext_query_iExpres
   function addOrder($order, $direction = null) {
     $this->order[] = array(
       $order instanceof pdoext_query_iExpression ? $order : new pdoext_query_Field($order),
-      in_array($direction, array('ASC', 'DESC')) ? $direction : null);
+      in_array(strtoupper($direction), array('ASC', 'DESC')) ? $direction : null);
   }
   function setLimit($limit) {
     $this->limit = (int) $limit;
