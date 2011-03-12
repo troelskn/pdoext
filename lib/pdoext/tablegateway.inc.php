@@ -313,6 +313,32 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
   }
 
   /**
+   * Inserts or updates a row to the table.
+   * @param  $data       array  Associative array of column => value to upsert.
+   * @return boolean
+   */
+  function save($entity) {
+    $data = $this->marshal($entity);
+    $pk = $this->getPKey();
+    foreach ($pk as $column) {
+      if (!isset($data[$column])) {
+        return $this->insert($entity);
+      }
+    }
+    return $this->update($entity);
+  }
+
+  /**
+   * Like save, but raises an exception if there are any errors
+   */
+  function saveOrFail($entity) {
+    $result = $this->save($entity);
+    if ($this->hasErrors($entity)) {
+      throw new Exception("One or more errors prevented saving of entity");
+    }
+  }
+
+  /**
    * Inserts a row to the table.
    * @param  $data       array  Associative array of column => value to insert.
    * @return boolean
