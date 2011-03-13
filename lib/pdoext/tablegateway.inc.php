@@ -320,9 +320,13 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
   function save($entity) {
     $data = $this->marshal($entity);
     $pk = $this->getPKey();
+    if (count($pk) != 1) {
+      throw new Exception("save unsupported for complex primary keys. Use update/insert");
+    }
     foreach ($pk as $column) {
       if (!isset($data[$column])) {
-        return $this->insert($entity);
+        $entity->$column = $this->insert($entity);
+        return (boolean) $entity->$column;
       }
     }
     return $this->update($entity);
