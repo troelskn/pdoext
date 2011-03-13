@@ -1,4 +1,8 @@
 <?php
+require_once 'pdoext/connection.inc.php';
+require_once 'pdoext/query.inc.php';
+require_once 'pdoext/tablegateway.inc.php';
+
 /**
  * Indents a string by two spaces, even if the string has linebreaks.
  */
@@ -37,6 +41,25 @@ function pdoext_find_caller($skip = '/^pdoext_/i') {
 }
 
 /**
+ * Transforms CamelCase to underscore_case
+ */
+function pdoext_underscore($cameled) {
+  return implode(
+    '_',
+    array_map(
+      'strtolower',
+      preg_split('/([A-Z]{1}[^A-Z]*)/', $cameled, -1, PREG_SPLIT_DELIM_CAPTURE|PREG_SPLIT_NO_EMPTY)));
+}
+
+class pdoext_DummyConnection {
+  function quote($name) {
+    return $name;
+  }
+  function quoteName($name) {
+    return $name;
+  }
+}
+/**
  * Creates a new query object.
  * @returns pdoext_Query
  */
@@ -66,16 +89,4 @@ function pdoext_value($value) {
  */
 function pdoext_literal($sql) {
   return new pdoext_query_Literal($sql);
-}
-
-/**
- * Global accessor to return a database connection.
- * Uses `$GLOBALS['pdoext_connection']['callback']` to instantiate on the first invocation.
- * @returns pdoext_Connection
- */
-function pdoext_db() {
-  if (!isset($GLOBALS['pdoext_connection']['instance'])) {
-    $GLOBALS['pdoext_connection']['instance'] = call_user_func($GLOBALS['pdoext_connection']['callback']);
-  }
-  return $GLOBALS['pdoext_connection']['instance'];
 }

@@ -32,6 +32,12 @@ class pdoext_query_Field implements pdoext_query_iExpression {
     $this->columnname;
   }
   function toSql($db) {
+    if ($this->columnname == '*') {
+      if ($this->tablename) {
+        return $db->quoteName($this->tablename).'.'.$this->columnname;
+      }
+      return $this->columnname;
+    }
     return $db->quoteName($this->name);
   }
 }
@@ -81,6 +87,43 @@ class pdoext_query_Literal implements pdoext_query_iExpression {
   }
 }
 
+/**
+ * A parameterised criterion has placeholders for values, that gets bound on execution.
+ */
+class pdoext_ParameterisedCriteron implements pdoext_query_iCriteron {
+  protected $sql;
+  protected $parameters;
+  function __construct($sql, $parameters = array()) {
+    $this->sql = $sql;
+    $this->parameters = array();
+    foreach ($parameters as $param) {
+      if (is_object($param)) {
+        $this->parameters[] = $param;
+      } else {
+        $this->parameters[] = new pdoext_query_Value($param);
+      }
+    }
+  }
+  function toSql($db) {
+    $this->_params = $this->parameters;
+    $this->_db = $db;
+    $result = preg_replace_callback('/[?]/', array($this, '__callback'), $this->sql);
+    $this->_params = null;
+    $this->_db = null;
+    if (count($this->_params) !== 0) {
+      throw new Exception("Too many parameters");
+    }
+    return $result;
+  }
+  function __callback() {
+    if (count($this->_params) === 0) {
+      throw new Exception("Too few parameters");
+    }
+    $param = array_shift($this->_params);
+    return $param->toSql($this->_db);
+  }
+}
+
 interface pdoext_query_iCriteron {}
 
 /**
@@ -102,8 +145,38 @@ class pdoext_query_Criteria implements pdoext_query_iCriteron {
     $this->criteria[] = $criterion;
     return $criterion;
   }
+  /**
+   * Removes criteria that looks similar to the given criterion.
+   */
+  function removeCriterion($left, $right = null, $comparator = '=') {
+    return $this->removeCriterionObject($left instanceof pdoext_query_iCriteron ? $left : new pdoext_query_Criterion($left, $right, $comparator));
+  }
+  function removeCriterionObject(pdoext_query_iCriteron $criterion) {
+    $conn = new pdoext_DummyConnection();
+    $tmp = array();
+    foreach ($this->criteria as $crit) {
+      if (!$crit->toSql($conn) == $criterion->toSql($conn)) {
+	$tmp[] = $crit;
+      }
+    }
+    $this->criteria = $tmp;
+  }
+  /**
+   * Adds a condition to the WHERE part of the query.
+   * If you pass a string with one or more placeholders (`?`-marks), a bound parameterised expression is assumed, where remaining arguments will be bound by position. See `pdoext_ParameterisedCriteron`.
+   * Otherwise, a plain comparison is assumed, as per `addCriterion`
+   * @returns self
+   */
   function where($left, $right = null, $comparator = '=') {
-    $this->addCriterion($left, $right, $comparator);
+    if (is_string($left) && strpos($left, '?') !== false) {
+      // it's a parameterised criterion
+      $get_func_args = get_func_args();
+      $sql = array_shift($get_func_args);
+      $this->addCriterionObject(new pdoext_ParameterisedCriteron($sql, $get_func_args));
+    } else {
+      // it's a an expression
+      $this->addCriterion($left, $right, $comparator);
+    }
     return $this;
   }
   function setConjunctionAnd() {
@@ -202,7 +275,7 @@ class pdoext_Query extends pdoext_query_Criteria implements pdoext_query_iExpres
   protected $straight_join = false;
 
   function __construct($tablename, $alias = null) {
-    parent::__construct();
+    parent::__construct('AND');
     $this->tablename = $tablename;
     $this->alias = $alias;
   }
@@ -261,7 +334,7 @@ class pdoext_Query extends pdoext_query_Criteria implements pdoext_query_iExpres
   function addOrder($order, $direction = null) {
     $this->order[] = array(
       $order instanceof pdoext_query_iExpression ? $order : new pdoext_query_Field($order),
-      in_array($direction, array('ASC', 'DESC')) ? $direction : null);
+      in_array(strtoupper($direction), array('ASC', 'DESC')) ? $direction : null);
   }
   function setLimit($limit) {
     $this->limit = (int) $limit;

@@ -182,7 +182,7 @@ SELECT *
 FROM `people`
 WHERE
   `first_name` = 'John'
-  OR account_id IN (
+  AND account_id IN (
     SELECT *
     FROM `accounts`
     WHERE
@@ -213,5 +213,12 @@ FROM (
     AND "con_refresh" = \'0\'
   ORDER BY "con_posttime" DESC
   LIMIT 100) AS "x"');
+  }
+
+  function test_select_with_parameterised_criterion() {
+    $db = $this->getConnection();
+    $query = pdoext_query("content");
+    $query->addCriterion(new pdoext_ParameterisedCriteron('con_posttime = ? and con_refresh > ?', array(1234567, 0)));
+    $this->assertSqlEqual($query->toSql($db), "select * from content where con_posttime = '1234567' and con_refresh > '0'");
   }
 }

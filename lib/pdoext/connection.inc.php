@@ -19,10 +19,10 @@ class pdoext_Connection extends PDO {
    * Creates a new database connection.
    * Set `$failSafe` to true to have execution exit on error. Otherwise you'll get an exception and the stacktrace will contain your database password. Since such traces are usually logged somewhere, it is an unsafe thing to allow.
    */
-  public function __construct($dsn, $user = null, $password = null, $failSafe = true) {
+  public function __construct($dsn, $user = null, $password = null, $attributes = array(), $failSafe = true) {
     try {
-       parent::__construct($dsn, $user, $password);
-       $this->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+      parent::__construct($dsn, $user, $password, $attributes);
+      $this->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     } catch (PDOException $ex) {
       if ($failSafe) {
         die("Database connection failed: " . $ex->getMessage() . " in file ".__FILE__." at line ".__LINE__);
@@ -202,7 +202,7 @@ class pdoext_Connection extends PDO {
    */
   public function beginTransaction() {
     if ($this->_inTransaction) {
-      throw new pdoext_AlreadyInTransactionException(sprintf("Already in transaction. Tansaction started at line %s in file %s", $this->_inTransaction[0], $this->_inTransaction[1]));
+      throw new pdoext_AlreadyInTransactionException(sprintf("Already in transaction. Transaction started at line %s in file %s", $this->_inTransaction[0], $this->_inTransaction[1]));
     }
     $result = parent::beginTransaction();
     $stack = debug_backtrace();
@@ -255,11 +255,16 @@ class pdoext_Connection extends PDO {
    */
   function table($tablename) {
     if (!isset($this->_tableGatewayCache[$tablename])) {
-      $klass = $tablename.'gateway';
-      if (class_exists($klass)) {
-        $this->_tableGatewayCache[$tablename] = new $klass($this);
+      $gatewayclass = str_replace('_', '', $tablename);
+      $recordclass = rtrim($gatewayclass, 's'); // @TODO use inflection here
+      $gatewayclass .= 'gateway';
+      if (!class_exists($gatewayclass)) {
+        $gatewayclass = 'pdoext_TableGateway';
+      }
+      if (class_exists($recordclass)) {
+        $this->_tableGatewayCache[$tablename] = new $gatewayclass($tablename, $this, $recordclass);
       } else {
-        $this->_tableGatewayCache[$tablename] = new pdoext_TableGateway($tablename, $this);
+        $this->_tableGatewayCache[$tablename] = new $gatewayclass($tablename, $this);
       }
     }
     return $this->_tableGatewayCache[$tablename];
@@ -350,6 +355,8 @@ class pdoext_MetaNotSupportedException extends Exception {
  */
 class pdoext_InformationSchema {
   protected $connection;
+  protected $has_many = array();
+  protected $belongs_to = array();
   function __construct($connection) {
     $this->connection = $connection;
   }
@@ -418,10 +425,10 @@ class pdoext_InformationSchema {
         foreach ($this->loadKeys() as $info) {
           if ($info['table_name'] === $table) {
             $meta[] = array(
-              'table' => $row['table_name'],
-              'column' => $row['column_name'],
-              'referenced_table' => $row['referenced_table_name'],
-              'referenced_column' => $row['referenced_column_name'],
+              'table' => $info['table_name'],
+              'column' => $info['column_name'],
+              'referenced_table' => $info['referenced_table_name'],
+              'referenced_column' => $info['referenced_column_name'],
             );
           }
         }
@@ -455,10 +462,10 @@ class pdoext_InformationSchema {
         foreach ($this->loadKeys() as $info) {
           if ($info['referenced_table_name'] === $table) {
             $meta[] = array(
-              'table' => $row['table_name'],
-              'column' => $row['column_name'],
-              'referenced_table' => $row['referenced_table_name'],
-              'referenced_column' => $row['referenced_column_name'],
+              'table' => $info['table_name'],
+              'column' => $info['column_name'],
+              'referenced_table' => $info['referenced_table_name'],
+              'referenced_column' => $info['referenced_column_name'],
             );
           }
         }
@@ -479,6 +486,27 @@ class pdoext_InformationSchema {
         throw new pdoext_MetaNotSupportedException();
     }
   }
+  function belongsTo($tablename) {
+    if (!isset($this->belongs_to[$tablename])) {
+      $this->belongs_to[$tablename] = array();
+      foreach ($this->getForeignKeys($tablename) as $info) {
+        $name = preg_replace('/_id$/', '', $info['column']);
+        $this->belongs_to[$tablename][$name] = $info;
+      }
+    }
+    return $this->belongs_to[$tablename];
+  }
+  function hasMany($tablename) {
+    if (!isset($this->has_many[$tablename])) {
+      $this->has_many[$tablename] = array();
+      foreach ($this->getReferencingKeys($tablename) as $info) {
+        $name = $info['table'];
+        $this->has_many[$tablename][$name] = $info;
+      }
+    }
+    return $this->has_many[$tablename];
+  }
+
   /**
    * @internal
    */
