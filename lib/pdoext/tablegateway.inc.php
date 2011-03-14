@@ -115,7 +115,7 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
    * Creates a new record
    */
   function create() {
-    return $this->load(array());
+    return $this->load($this->getColumnDefaultValues());
   }
 
   /**
@@ -227,6 +227,16 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
       }
     }
     return $columns;
+  }
+
+  function getColumnDefaultValues() {
+    $values = array();
+    foreach ($this->getColumns() as $column => $info) {
+      if (isset($info['default'])) {
+        $values[$column] = $info['default'];
+      }
+    }
+    return $values;
   }
 
   protected function marshal($object) {

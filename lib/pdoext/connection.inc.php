@@ -387,18 +387,7 @@ class pdoext_InformationSchema {
     */
   public function getColumns($table) {
     switch ($this->connection->getAttribute(PDO::ATTR_DRIVER_NAME)) {
-      case 'mysql':
-        $result = $this->connection->query("SHOW COLUMNS FROM ".$this->connection->quoteName($table));
-        $result->setFetchMode(PDO::FETCH_ASSOC);
-        $meta = array();
-        foreach ($result as $row) {
-          $meta[$row['Field']] = array(
-            'pk' => $row['Key'] == 'PRI',
-            'type' => $row['Type'],
-            'blob' => preg_match('/(TEXT|BLOB)/', $row['Type']),
-          );
-        }
-        return $meta;
+      // select TABLE_NAME, COLUMN_NAME, COLUMN_DEFAULT, DATA_TYPE, COLUMN_KEY from INFORMATION_SCHEMA.COLUMNS where TABLE_SCHEMA = DATABASE() and TABLE_NAME = 'device_registrations';
       case 'sqlite':
         $result = $this->connection->query("PRAGMA table_info(".$this->connection->quoteName($table).")");
         $result->setFetchMode(PDO::FETCH_ASSOC);
@@ -407,12 +396,26 @@ class pdoext_InformationSchema {
           $meta[$row['name']] = array(
             'pk' => $row['pk'] == '1',
             'type' => $row['type'],
+            'default' => null,
             'blob' => preg_match('/(TEXT|BLOB)/', $row['type']),
           );
         }
         return $meta;
       default:
-        throw new pdoext_MetaNotSupportedException();
+        $result = $this->connection->pexecute(
+          "select COLUMN_NAME, COLUMN_DEFAULT, DATA_TYPE, COLUMN_KEY from INFORMATION_SCHEMA.COLUMNS where TABLE_SCHEMA = DATABASE() and TABLE_NAME = :table_name",
+          array(':table_name' => $table));
+        $result->setFetchMode(PDO::FETCH_ASSOC);
+        $meta = array();
+        foreach ($result as $row) {
+          $meta[$row['COLUMN_NAME']] = array(
+            'pk' => $row['COLUMN_KEY'] == 'PRI',
+            'type' => $row['DATA_TYPE'],
+            'default' => in_array($row['COLUMN_DEFAULT'], array('NULL', 'CURRENT_TIMESTAMP')) ? null : $row['COLUMN_DEFAULT'],
+            'blob' => preg_match('/(TEXT|BLOB)/', $row['DATA_TYPE']),
+          );
+        }
+        return $meta;
     }
   }
   /**
