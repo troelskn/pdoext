@@ -191,9 +191,17 @@ class pdoext_query_Criteria implements pdoext_query_iCriteron {
     }
     $criteria = array();
     foreach ($this->criteria as $criterion) {
-      $criteria[] = $criterion->toSQL($db);
+      $is_many = method_exists($criterion, 'isMany') && $criterion->isMany();
+      if ($is_many) {
+        $criteria[] = "(" . $criterion->toSQL($db) . ")";
+      } else {
+        $criteria[] = $criterion->toSQL($db);
+      }
     }
     return implode("\n" . $this->conjunction . ' ', $criteria);
+  }
+  function isMany() {
+    return count($this->criteria) > 1;
   }
 }
 
@@ -241,7 +249,7 @@ class pdoext_query_Join extends pdoext_query_Criteria {
   public function __construct($table, $type = 'JOIN', $alias = null) {
     parent::__construct('AND');
     $this->table = $table; // @TODO Can a query be added as the join target?
-    $this->type = " ".trim($type)." ";
+    $this->type = strtoupper(trim($type))." ";
     $this->alias = $alias;
   }
   function toSql($db) {
