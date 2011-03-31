@@ -662,7 +662,7 @@ class pdoext_DatabaseRecord implements ArrayAccess {
       $referenced_column = $has_many[$internal_name]['referenced_column'];
       $table = $has_many[$internal_name]['table'];
       $column = $has_many[$internal_name]['column'];
-      return $db->table($table)->select()->where($column, $this->_data[$referenced_column]);
+      return $db->table($table)->select()->where($table . '.' . $column, $this->_data[$referenced_column]);
     }
     throw new BadMethodCallException("No method $name");
   }
