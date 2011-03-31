@@ -101,6 +101,10 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
     return $row[0];
   }
 
+  function limit($limit, $offset = null) {
+    return $this->select()->limit($limit, $offset);
+  }
+
   /**
    * Creates a record from an array
    */
