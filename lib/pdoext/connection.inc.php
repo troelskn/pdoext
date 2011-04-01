@@ -255,12 +255,16 @@ class pdoext_Connection extends PDO {
    */
   function table($tablename) {
     if (!isset($this->_tableGatewayCache[$tablename])) {
-      $gatewayclass = str_replace('_', '', $tablename);
-      $recordclass = rtrim($gatewayclass, 's'); // @TODO use inflection here
-      $gatewayclass .= 'gateway';
-      if (!class_exists($gatewayclass)) {
-        $gatewayclass = 'pdoext_TableGateway';
+      if (isset($GLOBALS['PDOEXT_TABLE_GATEWAY_MAPPING'][$tablename])) {
+        $gatewayclass = $GLOBALS['PDOEXT_TABLE_GATEWAY_MAPPING'][$tablename];
+      } else {
+        $gatewayclass = str_replace('_', '', $tablename);
+        $gatewayclass .= 'gateway';
+        if (!class_exists($gatewayclass)) {
+          $gatewayclass = 'pdoext_TableGateway';
+        }
       }
+      $recordclass = preg_replace('/sgateway$/', '', strtolower($gatewayclass)); // @TODO use inflection here
       if (class_exists($recordclass)) {
         $this->_tableGatewayCache[$tablename] = new $gatewayclass($tablename, $this, $recordclass);
       } else {
