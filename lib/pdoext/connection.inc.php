@@ -13,7 +13,9 @@ class pdoext_Connection extends PDO {
   protected $_nameClosing;
 
   protected $_tableGatewayCache;
+  protected $_tableGatewayMapping = array();
   protected $_informationSchema;
+  protected $_cacheEnabled = false;
 
   /**
    * Creates a new database connection.
@@ -56,6 +58,28 @@ class pdoext_Connection extends PDO {
         break;
     }
     $this->_informationSchema = new pdoext_InformationSchema($this);
+  }
+
+  public function setTableGatewayMapping($mapping) {
+    $this->_tableGatewayMapping = $mapping;
+  }
+
+  public function cacheEnabled() {
+    return $this->_cacheEnabled;
+  }
+
+  public function enableCache() {
+    $this->_cacheEnabled = true;
+  }
+
+  public function disableCache() {
+    $this->_cacheEnabled = false;
+  }
+
+  public function purgeCache() {
+    foreach ($this->_tableGatewayCache as $table) {
+      $table->purgeCache();
+    }
   }
 
   /**
@@ -255,8 +279,8 @@ class pdoext_Connection extends PDO {
    */
   function table($tablename) {
     if (!isset($this->_tableGatewayCache[$tablename])) {
-      if (isset($GLOBALS['PDOEXT_TABLE_GATEWAY_MAPPING'][$tablename])) {
-        $gatewayclass = $GLOBALS['PDOEXT_TABLE_GATEWAY_MAPPING'][$tablename];
+      if (isset($this->_tableGatewayMapping[$tablename])) {
+        $gatewayclass = $this->_tableGatewayMapping[$tablename];
       } else {
         $gatewayclass = str_replace('_', '', $tablename);
         $gatewayclass .= 'gateway';
