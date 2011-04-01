@@ -5,10 +5,12 @@
 class pdoext_TableGateway implements IteratorAggregate, Countable {
   protected $tablename;
   protected $recordtype;
-  protected $db;
+  protected $caching = false;
 
+  protected $db;
   protected $pkey = null;
   protected $columns = null;
+  protected $object_cache = array();
 
   /**
    *
@@ -24,6 +26,29 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
       $this->recordtype = $recordtype;
     }
     $this->db = $db;
+  }
+
+  protected function cacheGet($condition) {
+    if ($this->caching) {
+      $key = serialize($condition);
+      if (isset($this->object_cache[$key])) {
+        debug("Fetching from object cache $key");
+        return $this->object_cache[$key];
+      }
+    }
+  }
+
+  protected function cachePut($condition, $entity) {
+    if ($this->caching) {
+      $key = serialize($condition);
+      debug("Storing into object cache $key");
+      $this->object_cache[$key] = $entity;
+    }
+    return $entity;
+  }
+
+  function purgeCache() {
+    $this->object_cache = array();
   }
 
    /**
@@ -299,6 +324,13 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
    * @return array
    */
   function fetch($condition) {
+    $fetch_by_pk = $this->getPKey() == array_keys($condition);
+    if ($fetch_by_pk) {
+      $lookup = $this->cacheGet($condition);
+      if ($lookup) {
+        return $lookup;
+      }
+    }
     $condition = $this->marshal($condition);
     $query = "SELECT * FROM " . $this->db->quoteName($this->tablename);
     $where = array();
@@ -321,9 +353,14 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
     $result = $this->db->pexecute($query, $bind);
     if (method_exists($this, 'load')) {
       $row = $result->fetch(PDO::FETCH_ASSOC);
-      return $row ? $this->load($row) : null;
+      $record = $row ? $this->load($row) : null;
+    } else {
+      $record = $result->fetch(PDO::FETCH_ASSOC);
     }
-    return $result->fetch(PDO::FETCH_ASSOC);
+    if ($fetch_by_pk) {
+      $this->cachePut($condition, $record);
+    }
+    return $record;
   }
 
   /**
