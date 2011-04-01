@@ -30,9 +30,8 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
 
   protected function cacheGet($condition) {
     if ($this->caching) {
-      $key = serialize($condition);
+      $key = implode(",", $condition);
       if (isset($this->object_cache[$key])) {
-        debug("Fetching from object cache $key");
         return $this->object_cache[$key];
       }
     }
@@ -40,8 +39,7 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
 
   protected function cachePut($condition, $entity) {
     if ($this->caching) {
-      $key = serialize($condition);
-      debug("Storing into object cache $key");
+      $key = implode(",", $condition);
       $this->object_cache[$key] = $entity;
     }
     return $entity;
