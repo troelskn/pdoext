@@ -15,14 +15,19 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
    *
    * @param  $tablename  string  Name of the table
    * @param  $db         pdoext_Connection  The database connection
-   * @param  $recordtype string  Name of the class to use for records
    */
-  function __construct($tablename, pdoext_Connection $db, $recordtype = 'pdoext_DatabaseRecord') {
-    if (is_null($this->tablename)) {
-      $this->tablename = $tablename;
+  function __construct($tablename, pdoext_Connection $db) {
+    if (!is_null($this->tablename)) {
+      throw new Exception("Specifying tablename in property is deprecated. Use Connection#setTableNameMapping");
     }
+    $this->tablename = $tablename;
     if (is_null($this->recordtype)) {
-      $this->recordtype = $recordtype;
+      $recordclass = preg_replace('/s$/', '', str_replace('_', '', $tablename)); // @TODO use inflection here
+      if (class_exists($recordclass)) {
+        $this->recordtype = $recordclass;
+      } else {
+        $this->recordtype = 'pdoext_DatabaseRecord';
+      }
     }
     $this->db = $db;
   }

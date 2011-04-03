@@ -13,7 +13,7 @@ class pdoext_Connection extends PDO {
   protected $_nameClosing;
 
   protected $_tableGatewayCache;
-  protected $_tableGatewayMapping = array();
+  protected $_tableNameMapping = array();
   protected $_informationSchema;
   protected $_cacheEnabled = false;
 
@@ -58,10 +58,6 @@ class pdoext_Connection extends PDO {
         break;
     }
     $this->_informationSchema = new pdoext_InformationSchema($this);
-  }
-
-  public function setTableGatewayMapping($mapping) {
-    $this->_tableGatewayMapping = $mapping;
   }
 
   public function cacheEnabled() {
@@ -273,29 +269,52 @@ class pdoext_Connection extends PDO {
     return $this->getInformationSchema()->getColumns($table);
   }
 
+  public function setTableNameMapping($mapping) {
+    $this->_tableNameMapping = $mapping;
+  }
+
   /**
    * Returns a table gateway.
    * @returns pdoext_TableGateway
    */
-  function table($tablename) {
-    if (!isset($this->_tableGatewayCache[$tablename])) {
-      if (isset($this->_tableGatewayMapping[$tablename])) {
-        $gatewayclass = $this->_tableGatewayMapping[$tablename];
-      } else {
-        $gatewayclass = str_replace('_', '', $tablename);
-        $gatewayclass .= 'gateway';
-        if (!class_exists($gatewayclass)) {
-          $gatewayclass = 'pdoext_TableGateway';
-        }
-      }
-      $recordclass = preg_replace('/sgateway$/', '', strtolower($gatewayclass)); // @TODO use inflection here
-      if (class_exists($recordclass)) {
-        $this->_tableGatewayCache[$tablename] = new $gatewayclass($tablename, $this, $recordclass);
-      } else {
-        $this->_tableGatewayCache[$tablename] = new $gatewayclass($tablename, $this);
-      }
+  public function table($tablename) {
+    /*
+      cases:
+
+      mapping:
+        tbl_name -> TableNamesGateway
+      reverse:
+        TableNamesGateway -> tbl_name
+
+      input          output
+      table_names -> TableNamesGateway
+      tbl_name    -> TableNamesGateway
+      tableNames  -> TableNamesGateway
+
+      no mapping:
+
+      input          output
+      table_names -> TableNamesGateway
+      tableNames  -> TableNamesGateway
+
+     */
+    $underscored_name = strtolower(
+      implode('_', preg_split('/([A-Z]{1}[^A-Z]*)/', $tablename, -1, PREG_SPLIT_DELIM_CAPTURE|PREG_SPLIT_NO_EMPTY)));
+
+    if (isset($this->_tableNameMapping[$underscored_name])) {
+      $real_tablename = $this->_tableNameMapping[$underscored_name];
+    } else {
+      $real_tablename = $underscored_name;
     }
-    return $this->_tableGatewayCache[$tablename];
+    $camelized_name = implode("", array_map('ucfirst', explode('_', $underscored_name)));
+    $gatewayclass = $camelized_name . "Gateway";
+    if (!isset($this->_tableGatewayCache[$real_tablename])) {
+      if (!class_exists($gatewayclass)) {
+        $gatewayclass = 'pdoext_TableGateway';
+      }
+      $this->_tableGatewayCache[$real_tablename] = new $gatewayclass($real_tablename, $this);
+    }
+    return $this->_tableGatewayCache[$real_tablename];
   }
 
   /**
