@@ -170,7 +170,7 @@ class pdoext_query_Criteria implements pdoext_query_iCriteron {
   function where($left, $right = null, $comparator = '=') {
     if (is_string($left) && strpos($left, '?') !== false) {
       // it's a parameterised criterion
-      $get_func_args = get_func_args();
+      $get_func_args = func_get_args();
       $sql = array_shift($get_func_args);
       $this->addCriterionObject(new pdoext_ParameterisedCriteron($sql, $get_func_args));
     } else {
