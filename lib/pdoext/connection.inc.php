@@ -309,6 +309,11 @@ class pdoext_Connection extends PDO {
     $camelized_name = implode("", array_map('ucfirst', explode('_', $underscored_name)));
     $gatewayclass = $camelized_name . "Gateway";
     if (!isset($this->_tableGatewayCache[$real_tablename])) {
+      $reverse_mapping = array_flip($this->_tableNameMapping);
+      if (isset($reverse_mapping[$real_tablename])) {
+        $camelized_name = implode("", array_map('ucfirst', explode('_', $reverse_mapping[$real_tablename])));
+        $gatewayclass = $camelized_name . "Gateway";
+      }
       if (!class_exists($gatewayclass)) {
         $gatewayclass = 'pdoext_TableGateway';
       }
