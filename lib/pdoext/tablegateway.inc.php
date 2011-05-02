@@ -5,25 +5,52 @@
 class pdoext_TableGateway implements IteratorAggregate, Countable {
   protected $tablename;
   protected $recordtype;
-  protected $db;
 
+  protected $db;
   protected $pkey = null;
   protected $columns = null;
+  protected $object_cache = array();
 
   /**
    *
    * @param  $tablename  string  Name of the table
    * @param  $db         pdoext_Connection  The database connection
-   * @param  $recordtype string  Name of the class to use for records
    */
-  function __construct($tablename, pdoext_Connection $db, $recordtype = 'pdoext_DatabaseRecord') {
-    if (is_null($this->tablename)) {
-      $this->tablename = $tablename;
+  function __construct($tablename, pdoext_Connection $db) {
+    if (!is_null($this->tablename)) {
+      throw new Exception("Specifying tablename in property is deprecated. Use Connection#setTableNameMapping");
     }
+    $this->tablename = $tablename;
     if (is_null($this->recordtype)) {
-      $this->recordtype = $recordtype;
+      $recordclass = preg_replace('/s$/', '', str_replace('_', '', $tablename)); // @TODO use inflection here
+      if (class_exists($recordclass)) {
+        $this->recordtype = $recordclass;
+      } else {
+        $this->recordtype = 'pdoext_DatabaseRecord';
+      }
     }
     $this->db = $db;
+  }
+
+  protected function cacheGet($condition) {
+    if ($this->db->cacheEnabled()) {
+      $key = implode(",", $condition);
+      if (isset($this->object_cache[$key])) {
+        return $this->object_cache[$key];
+      }
+    }
+  }
+
+  protected function cachePut($condition, $entity) {
+    if ($this->db->cacheEnabled()) {
+      $key = implode(",", $condition);
+      $this->object_cache[$key] = $entity;
+    }
+    return $entity;
+  }
+
+  function purgeCache() {
+    $this->object_cache = array();
   }
 
    /**
@@ -101,6 +128,10 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
     return $row[0];
   }
 
+  function limit($limit, $offset = null) {
+    return $this->select()->limit($limit, $offset);
+  }
+
   /**
    * Creates a record from an array
    */
@@ -115,7 +146,7 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
    * Creates a new record
    */
   function create() {
-    return $this->load(array());
+    return $this->load($this->getColumnDefaultValues());
   }
 
   /**
@@ -229,6 +260,16 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
     return $columns;
   }
 
+  function getColumnDefaultValues() {
+    $values = array();
+    foreach ($this->getColumns() as $column => $info) {
+      if (isset($info['default'])) {
+        $values[$column] = $info['default'];
+      }
+    }
+    return $values;
+  }
+
   protected function marshal($object) {
     if (is_array($object)) {
       return $object;
@@ -285,6 +326,13 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
    * @return array
    */
   function fetch($condition) {
+    $fetch_by_pk = $this->getPKey() == array_keys($condition);
+    if ($fetch_by_pk) {
+      $lookup = $this->cacheGet($condition);
+      if ($lookup) {
+        return $lookup;
+      }
+    }
     $condition = $this->marshal($condition);
     $query = "SELECT * FROM " . $this->db->quoteName($this->tablename);
     $where = array();
@@ -307,9 +355,14 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
     $result = $this->db->pexecute($query, $bind);
     if (method_exists($this, 'load')) {
       $row = $result->fetch(PDO::FETCH_ASSOC);
-      return $row ? $this->load($row) : null;
+      $record = $row ? $this->load($row) : null;
+    } else {
+      $record = $result->fetch(PDO::FETCH_ASSOC);
     }
-    return $result->fetch(PDO::FETCH_ASSOC);
+    if ($fetch_by_pk) {
+      $this->cachePut($condition, $record);
+    }
+    return $record;
   }
 
   /**
@@ -531,6 +584,12 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate {
     }
     return $row;
   }
+  function count() {
+    $sql = "select count(*) from (" . $this->toSql($this->db) . ") x";
+    $result = $this->db->query($sql);
+    $row = $result->fetch();
+    return $row[0];
+  }
   protected function executeQuery() {
     if ($this->result) {
       return;
@@ -646,7 +705,7 @@ class pdoext_DatabaseRecord implements ArrayAccess {
       $referenced_column = $has_many[$internal_name]['referenced_column'];
       $table = $has_many[$internal_name]['table'];
       $column = $has_many[$internal_name]['column'];
-      return $db->table($table)->select()->where($column, $this->_data[$referenced_column]);
+      return $db->table($table)->select()->where($table . '.' . $column, $this->_data[$referenced_column]);
     }
     throw new BadMethodCallException("No method $name");
   }

@@ -13,7 +13,9 @@ class pdoext_Connection extends PDO {
   protected $_nameClosing;
 
   protected $_tableGatewayCache;
+  protected $_tableNameMapping = array();
   protected $_informationSchema;
+  protected $_cacheEnabled = false;
 
   /**
    * Creates a new database connection.
@@ -56,6 +58,24 @@ class pdoext_Connection extends PDO {
         break;
     }
     $this->_informationSchema = new pdoext_InformationSchema($this);
+  }
+
+  public function cacheEnabled() {
+    return $this->_cacheEnabled;
+  }
+
+  public function enableCache() {
+    $this->_cacheEnabled = true;
+  }
+
+  public function disableCache() {
+    $this->_cacheEnabled = false;
+  }
+
+  public function purgeCache() {
+    foreach ($this->_tableGatewayCache as $table) {
+      $table->purgeCache();
+    }
   }
 
   /**
@@ -249,25 +269,57 @@ class pdoext_Connection extends PDO {
     return $this->getInformationSchema()->getColumns($table);
   }
 
+  public function setTableNameMapping($mapping) {
+    $this->_tableNameMapping = $mapping;
+  }
+
   /**
    * Returns a table gateway.
    * @returns pdoext_TableGateway
    */
-  function table($tablename) {
-    if (!isset($this->_tableGatewayCache[$tablename])) {
-      $gatewayclass = str_replace('_', '', $tablename);
-      $recordclass = rtrim($gatewayclass, 's'); // @TODO use inflection here
-      $gatewayclass .= 'gateway';
+  public function table($tablename) {
+    /*
+      cases:
+
+      mapping:
+        tbl_name -> TableNamesGateway
+      reverse:
+        TableNamesGateway -> tbl_name
+
+      input          output
+      table_names -> TableNamesGateway
+      tbl_name    -> TableNamesGateway
+      tableNames  -> TableNamesGateway
+
+      no mapping:
+
+      input          output
+      table_names -> TableNamesGateway
+      tableNames  -> TableNamesGateway
+
+     */
+    $underscored_name = strtolower(
+      implode('_', preg_split('/([A-Z]{1}[^A-Z]*)/', $tablename, -1, PREG_SPLIT_DELIM_CAPTURE|PREG_SPLIT_NO_EMPTY)));
+
+    if (isset($this->_tableNameMapping[$underscored_name])) {
+      $real_tablename = $this->_tableNameMapping[$underscored_name];
+    } else {
+      $real_tablename = $underscored_name;
+    }
+    $camelized_name = implode("", array_map('ucfirst', explode('_', $underscored_name)));
+    $gatewayclass = $camelized_name . "Gateway";
+    if (!isset($this->_tableGatewayCache[$real_tablename])) {
+      $reverse_mapping = array_flip($this->_tableNameMapping);
+      if (isset($reverse_mapping[$real_tablename])) {
+        $camelized_name = implode("", array_map('ucfirst', explode('_', $reverse_mapping[$real_tablename])));
+        $gatewayclass = $camelized_name . "Gateway";
+      }
       if (!class_exists($gatewayclass)) {
         $gatewayclass = 'pdoext_TableGateway';
       }
-      if (class_exists($recordclass)) {
-        $this->_tableGatewayCache[$tablename] = new $gatewayclass($tablename, $this, $recordclass);
-      } else {
-        $this->_tableGatewayCache[$tablename] = new $gatewayclass($tablename, $this);
-      }
+      $this->_tableGatewayCache[$real_tablename] = new $gatewayclass($real_tablename, $this);
     }
-    return $this->_tableGatewayCache[$tablename];
+    return $this->_tableGatewayCache[$real_tablename];
   }
 
   /**
@@ -387,18 +439,7 @@ class pdoext_InformationSchema {
     */
   public function getColumns($table) {
     switch ($this->connection->getAttribute(PDO::ATTR_DRIVER_NAME)) {
-      case 'mysql':
-        $result = $this->connection->query("SHOW COLUMNS FROM ".$this->connection->quoteName($table));
-        $result->setFetchMode(PDO::FETCH_ASSOC);
-        $meta = array();
-        foreach ($result as $row) {
-          $meta[$row['Field']] = array(
-            'pk' => $row['Key'] == 'PRI',
-            'type' => $row['Type'],
-            'blob' => preg_match('/(TEXT|BLOB)/', $row['Type']),
-          );
-        }
-        return $meta;
+      // select TABLE_NAME, COLUMN_NAME, COLUMN_DEFAULT, DATA_TYPE, COLUMN_KEY from INFORMATION_SCHEMA.COLUMNS where TABLE_SCHEMA = DATABASE() and TABLE_NAME = 'device_registrations';
       case 'sqlite':
         $result = $this->connection->query("PRAGMA table_info(".$this->connection->quoteName($table).")");
         $result->setFetchMode(PDO::FETCH_ASSOC);
@@ -407,12 +448,26 @@ class pdoext_InformationSchema {
           $meta[$row['name']] = array(
             'pk' => $row['pk'] == '1',
             'type' => $row['type'],
+            'default' => null,
             'blob' => preg_match('/(TEXT|BLOB)/', $row['type']),
           );
         }
         return $meta;
       default:
-        throw new pdoext_MetaNotSupportedException();
+        $result = $this->connection->pexecute(
+          "select COLUMN_NAME, COLUMN_DEFAULT, DATA_TYPE, COLUMN_KEY from INFORMATION_SCHEMA.COLUMNS where TABLE_SCHEMA = DATABASE() and TABLE_NAME = :table_name",
+          array(':table_name' => $table));
+        $result->setFetchMode(PDO::FETCH_ASSOC);
+        $meta = array();
+        foreach ($result as $row) {
+          $meta[$row['COLUMN_NAME']] = array(
+            'pk' => $row['COLUMN_KEY'] == 'PRI',
+            'type' => $row['DATA_TYPE'],
+            'default' => in_array($row['COLUMN_DEFAULT'], array('NULL', 'CURRENT_TIMESTAMP')) ? null : $row['COLUMN_DEFAULT'],
+            'blob' => preg_match('/(TEXT|BLOB)/', $row['DATA_TYPE']),
+          );
+        }
+        return $meta;
     }
   }
   /**
