@@ -326,7 +326,7 @@ class pdoext_Query extends pdoext_query_Criteria implements pdoext_query_iExpres
     return $groupby;
   }
   function setHaving($left, $right = null, $comparator = '=') {
-    return $this->having = $left instanceof pdoext_query_iCriteron ? $left : new pdoext_query_Criterion($left, $right, $comparator);
+    return $this->having = $left instanceof pdoext_query_iExpression ? $left : new pdoext_query_Criterion($left, $right, $comparator);
   }
   function addColumn($column, $alias = null) {
     $this->columns[] = array(
