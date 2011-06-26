@@ -111,13 +111,32 @@ class pdoext_Connection extends PDO {
    * Writes an entry to the log. This is an internal function and shouldn't be called outside of pdoext.
    * @internal
    */
-  function log($sql, $t, $params = null) {
+  function logBefore($sql, $params = null) {
+    if ($this->_logTarget) {
+      if ($this->_slowLogOffset) {
+        return;
+      }
+      $hash = substr(md5($sql), 0, 8);
+      $more = $params ? ("\n---\n" . var_export($params, true)) : "";
+      error_log("*** $hash " . date("Y-m-d H:i:s") . " from " . pdoext_find_caller() . "\n---\n" . $sql . $more . "\n---\n", 3, $this->_logTarget);
+    }
+  }
+
+  /**
+   * Writes an entry to the log. This is an internal function and shouldn't be called outside of pdoext.
+   * @internal
+   */
+  function logAfter($sql, $t, $params = null) {
     if ($this->_logTarget) {
       if ($this->_slowLogOffset && $t < $this->_slowLogOffset) {
         return;
       }
-      $more = $params ? ("\n---\n" . var_export($params, true)) : "";
-      error_log("[" . date("Y-m-d H:i:s") . "] [" . number_format($t / 1000, 4) . " s] from " . pdoext_find_caller() . "\n---\n" . $sql . $more . "\n---\n", 3, $this->_logTarget);
+      $hash = substr(md5($sql), 0, 8);
+      if ($this->_slowLogOffset) {
+        $more = $params ? ("\n---\n" . var_export($params, true)) : "";
+        error_log("*** $hash " . date("Y-m-d H:i:s") . " from " . pdoext_find_caller() . "\n---\n" . $sql . $more . "\n---\n", 3, $this->_logTarget);
+      }
+      error_log("*** $hash query completed in " . number_format($t / 1000, 4) . " s\n---\n", 3, $this->_logTarget);
     }
   }
 
@@ -127,8 +146,9 @@ class pdoext_Connection extends PDO {
   public function exec($statement) {
     $sql = $statement instanceOf pdoext_Query ? $statement->toSql($this) : $statement;
     $t = microtime(true);
+    $this->logBefore($sql);
     $result = parent::exec($sql);
-    $this->log($sql, microtime(true) - $t);
+    $this->logAfter($sql, microtime(true) - $t);
     return $result;
   }
 
@@ -138,8 +158,9 @@ class pdoext_Connection extends PDO {
   public function query($statement) {
     $sql = $statement instanceOf pdoext_Query ? $statement->toSql($this) : $statement;
     $t = microtime(true);
+    $this->logBefore($sql);
     $result = parent::query($sql);
-    $this->log($sql, microtime(true) - $t);
+    $this->logAfter($sql, microtime(true) - $t);
     return $result;
   }
 
@@ -343,8 +364,9 @@ class pdoext_LoggingStatement extends PDOStatement {
   public function execute($input_parameters = array()) {
     if ($this->logger) {
       $t = microtime(true);
+      $this->logger->logBefore($sql, $input_parameters);
       $result = parent::execute($input_parameters);
-      $this->logger->log($this->sql, microtime(true) - $t, $input_parameters);
+      $this->logger->logAfter($sql, microtime(true) - $t, $input_parameters);
       return $result;
     }
     return parent::execute($input_parameters);
