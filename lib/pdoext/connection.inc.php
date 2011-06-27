@@ -364,9 +364,9 @@ class pdoext_LoggingStatement extends PDOStatement {
   public function execute($input_parameters = array()) {
     if ($this->logger) {
       $t = microtime(true);
-      $this->logger->logBefore($sql, $input_parameters);
+      $this->logger->logBefore($this->sql, $input_parameters);
       $result = parent::execute($input_parameters);
-      $this->logger->logAfter($sql, microtime(true) - $t, $input_parameters);
+      $this->logger->logAfter($this->sql, microtime(true) - $t, $input_parameters);
       return $result;
     }
     return parent::execute($input_parameters);
