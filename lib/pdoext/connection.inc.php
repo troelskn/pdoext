@@ -179,23 +179,6 @@ class pdoext_Connection extends PDO {
   }
 
   /**
-   * Workaround for bug in PDO:
-   *   http://bugs.php.net/bug.php?id=41698
-   * @internal
-   */
-  protected function castInputParams($input) {
-    $safe = array();
-    foreach ($input as $key => $value) {
-      if (is_float($value)) {
-        $safe[$key] = number_format($value, 2, '.', '');
-      } else {
-        $safe[$key] = $value;
-      }
-    }
-    return $safe;
-  }
-
-  /**
    * Prepares a statement for execution and returns a statement object.
    */
   public function prepare($sql, $options = array()) {
@@ -213,7 +196,7 @@ class pdoext_Connection extends PDO {
   public function pexecute($sql, $input_params = null) {
     $stmt = $this->prepare($sql);
     if (is_array($input_params)) {
-      $stmt->execute($this->castInputParams($input_params));
+      $stmt->execute($input_params);
     } else {
       $stmt->execute();
     }
