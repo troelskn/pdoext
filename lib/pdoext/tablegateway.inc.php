@@ -343,6 +343,8 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
       }
       if ($value instanceOf pdoext_query_iExpression) {
         $where[] = $this->db->quoteName($column) . " = " . $value->toSql($this->db);
+      } elseif ($value === null) {
+        $where[] = $this->db->quoteName($column) . " IS NULL";
       } else {
         $where[] = $this->db->quoteName($column) . " = :" . $column;
         $bind[":" . $column] = $value;
@@ -477,6 +479,8 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
     foreach ($condition as $column => $value) {
       if ($value instanceOf pdoext_query_iExpression) {
         $where[] = $this->db->quoteName($column) . " = :where_" . $value->toSql($this->db);
+      } elseif ($value === null) {
+        $where[] = $this->db->quoteName($column) . " IS NULL";
       } else {
         $where[] = $this->db->quoteName($column) . " = :where_" . $column;
         $bind[":where_" . $column] = $value;
@@ -502,6 +506,8 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
     foreach ($condition as $column => $value) {
       if ($value instanceOf pdoext_query_iExpression) {
         $where[] = $this->db->quoteName($column) . " = " . $value->toSql($this->db);
+      } elseif ($value === null) {
+        $where[] = $this->db->quoteName($column) . " IS NULL";
       } else {
         $where[] = $this->db->quoteName($column) . " = :" . $column;
         $bind[":" . $column] = $value;
