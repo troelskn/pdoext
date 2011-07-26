@@ -41,6 +41,21 @@ function pdoext_find_caller($skip = '/^pdoext_/i') {
 }
 
 /**
+ * Performs a fetch assoc on a statement, but will raise an exception if the result is ambiguous.
+ */
+function pdoext_fetch_assoc_safe($resultset) {
+  $row = $resultset->fetch(PDO::FETCH_ASSOC);
+  if ($row === false) {
+    return false;
+  }
+  $expected = $resultset->columnCount();
+  if (count($row) != $expected) {
+    throw new Exception("Unexpected number of columns returned. Ambiguous resultset caused by join?");
+  }
+  return $row;
+}
+
+/**
  * Transforms CamelCase to underscore_case
  */
 function pdoext_underscore($cameled) {

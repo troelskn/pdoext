@@ -356,10 +356,10 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
     $query .= "\nWHERE\n  " . implode("\n  AND ", $where);
     $result = $this->db->pexecute($query, $bind);
     if (method_exists($this, 'load')) {
-      $row = $result->fetch(PDO::FETCH_ASSOC);
+      $row = pdoext_fetch_assoc_safe($result);
       $record = $row ? $this->load($row) : null;
     } else {
-      $record = $result->fetch(PDO::FETCH_ASSOC);
+      $record = pdoext_fetch_assoc_safe($result);
     }
     if ($fetch_by_pk) {
       $this->cachePut($condition, $record);
@@ -608,7 +608,7 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate {
       $this->setOffset($offset);
     }
     $result = $this->db->query($this);
-    $result->setFetchMode(PDO::FETCH_ASSOC);
+    $result->setFetchMode(PDO::FETCH_BOTH);
     if (method_exists($this->gateway, 'load')) {
       $this->result = new pdoext_Resultset($result, $this->gateway);
     } else {
@@ -652,7 +652,7 @@ class pdoext_Resultset implements Iterator {
     return $row ? $this->loader->load($row) : $row;
   }
   function current() {
-    return $this->current = $this->current === null ? $this->load($this->cursor->fetch(PDO::FETCH_ASSOC)) : $this->current;
+    return $this->current = $this->current === null ? $this->load(pdoext_fetch_assoc_safe($this->cursor)) : $this->current;
   }
   function key() {
     return $this->key;
