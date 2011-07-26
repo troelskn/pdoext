@@ -73,6 +73,9 @@ class pdoext_DummyConnection {
   function quoteName($name) {
     return $name;
   }
+  function supportsSqlCalcFoundRows() {
+    return true;
+  }
 }
 /**
  * Creates a new query object.

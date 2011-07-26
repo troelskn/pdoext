@@ -6,7 +6,7 @@ interface pdoext_query_iExpression {
   /**
    * Compiles the object into a string representation, using a `pdoext_Connection`
    */
-  function toSql($db);
+  function toSql($db = null);
 }
 
 /**
@@ -31,7 +31,10 @@ class pdoext_query_Field implements pdoext_query_iExpression {
   function getColumnname() {
     $this->columnname;
   }
-  function toSql($db) {
+  function toSql($db = null) {
+    if (!$db) {
+      $db = new pdoext_DummyConnection();
+    }
     if ($this->columnname == '*') {
       if ($this->tablename) {
         return $db->quoteName($this->tablename).'.'.$this->columnname;
@@ -56,9 +59,12 @@ class pdoext_query_Value implements pdoext_query_iExpression {
   function isMany() {
     return is_array($this->value);
   }
-  function toSql($db) {
+  function toSql($db = null) {
     if (is_null($this->value)) {
       return 'NULL';
+    }
+    if (!$db) {
+      $db = new pdoext_DummyConnection();
     }
     if (is_array($this->value)) {
       $a = array();
@@ -82,7 +88,7 @@ class pdoext_query_Literal implements pdoext_query_iExpression {
   function isMany() {
     return is_array($this->sql);
   }
-  function toSql($db) {
+  function toSql($db = null) {
     return is_array($this->sql) ? implode(', ', $this->sql) : $this->sql;
   }
 }
@@ -104,7 +110,10 @@ class pdoext_ParameterisedCriteron implements pdoext_query_iCriteron {
       }
     }
   }
-  function toSql($db) {
+  function toSql($db = null) {
+    if (!$db) {
+      $db = new pdoext_DummyConnection();
+    }
     $this->_params = $this->parameters;
     $this->_db = $db;
     $result = preg_replace_callback('/[?]/', array($this, '__callback'), $this->sql);
@@ -185,9 +194,12 @@ class pdoext_query_Criteria implements pdoext_query_iCriteron {
   function setConjunctionOr() {
     $this->conjunction = 'OR';
   }
-  function toSql($db) {
+  function toSql($db = null) {
     if (count($this->criteria) === 0) {
       return '';
+    }
+    if (!$db) {
+      $db = new pdoext_DummyConnection();
     }
     $criteria = array();
     foreach ($this->criteria as $criterion) {
@@ -217,7 +229,10 @@ class pdoext_query_Criterion implements pdoext_query_iCriteron {
     $this->right = $right instanceof pdoext_query_iExpression ? $right : new pdoext_query_Value($right);
     $this->comparator = trim($comparator);
   }
-  function toSql($db) {
+  function toSql($db = null) {
+    if (!$db) {
+      $db = new pdoext_DummyConnection();
+    }
     $is_null = method_exists($this->right, 'isNull') && $this->right->isNull();
     $is_many = method_exists($this->right, 'isMany') && $this->right->isMany();
     if ($is_null) {
@@ -252,7 +267,10 @@ class pdoext_query_Join extends pdoext_query_Criteria {
     $this->type = strtoupper(trim($type))." ";
     $this->alias = $alias;
   }
-  function toSql($db) {
+  function toSql($db = null) {
+    if (!$db) {
+      $db = new pdoext_DummyConnection();
+    }
     if (count($this->criteria) > 0) {
       $on = "\nON\n" . pdoext_string_indent(parent::toSql($db));
     } else {
@@ -369,7 +387,10 @@ class pdoext_Query extends pdoext_query_Criteria implements pdoext_query_iExpres
   public function setStraightJoin($value = true) {
     $this->straight_join = $value;
   }
-  function toSql($db) {
+  function toSql($db = null) {
+    if (!$db) {
+      $db = new pdoext_DummyConnection();
+    }
     $sql = 'SELECT';
     if ($this->sql_calc_found_rows && $db->supportsSqlCalcFoundRows()) {
       $sql .= ' SQL_CALC_FOUND_ROWS';
