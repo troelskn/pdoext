@@ -346,6 +346,14 @@ class pdoext_Query extends pdoext_query_Criteria implements pdoext_query_iExpres
   function setHaving($left, $right = null, $comparator = '=') {
     return $this->having = $left instanceof pdoext_query_iExpression ? $left : new pdoext_query_Criterion($left, $right, $comparator);
   }
+  /**
+   * Will select tablename.*, which is more conservative than the default (*) when no columns are specified.
+   */
+  function selectTableColumns() {
+    if (count($this->columns) === 0) {
+      $this->columns[] = array(new pdoext_query_Field($this->tablename.'.*'), null);
+    }
+  }
   function addColumn($column, $alias = null) {
     $this->columns[] = array(
       $column instanceof pdoext_query_iExpression ? $column : new pdoext_query_Field($column),
