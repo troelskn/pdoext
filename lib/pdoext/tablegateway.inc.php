@@ -372,7 +372,7 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
    * @param  $data       array  Associative array of column => value to upsert.
    * @return boolean
    */
-  function save($entity) {
+  function save($entity, $respectValidationErrors = true) {
     $data = $this->marshal($entity);
     $pk = $this->getPKey();
     if (count($pk) != 1) {
@@ -380,11 +380,11 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
     }
     foreach ($pk as $column) {
       if (!isset($data[$column])) {
-        $entity->$column = $this->insert($entity);
+        $entity->$column = $this->insert($entity, $respectValidationErrors);
         return (boolean) $entity->$column;
       }
     }
-    return $this->update($entity);
+    return $this->update($entity, null, $respectValidationErrors);
   }
 
   /**
@@ -398,15 +398,22 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
   }
 
   /**
+   * Will try to save the entity, even if validation fails.
+   */
+  function saveIgnoreValidationErrors($entity) {
+    return $this->save($entity, false);
+  }
+
+  /**
    * Inserts a row to the table.
    * @param  $data       array  Associative array of column => value to insert.
    * @return boolean
    */
-  function insert($entity) {
+  function insert($entity, $respectValidationErrors = true) {
     $this->clearErrors($entity);
     $this->validateInsert($entity);
     $this->validate($entity);
-    if ($this->hasErrors($entity)) {
+    if ($respectValidationErrors && $this->hasErrors($entity)) {
       return null;
     }
     $data = $this->marshal($entity);
@@ -439,11 +446,11 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
    * @param  $condition  array  Associative array of column => value to serve as conditions for the query.
    * @return boolean
    */
-  function update($entity, $condition = null) {
+  function update($entity, $condition = null, $respectValidationErrors = true) {
     $this->clearErrors($entity);
     $this->validateUpdate($entity);
     $this->validate($entity);
-    if ($this->hasErrors($entity)) {
+    if ($respectValidationErrors && $this->hasErrors($entity)) {
       return false;
     }
     $data = $this->marshal($entity);
