@@ -75,7 +75,7 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
       return;
     }
     // Try auto-scope
-    if (preg_match('/^where([a-z]+)(Is|IsNot|Like|NotLike|GreaterThan|LesserThan|IsNull|IsNotNull)$/i', $name, $reg)) {
+    if (preg_match('/^where([a-z]+)(Is|IsNot|Like|NotLike|GreaterThan|LesserThan|IsNull|IsNotNull|Search)$/i', $name, $reg)) {
       $column = pdoext_underscore($reg[1]);
       $condition = strtolower($reg[2]);
       switch ($condition) {
@@ -103,6 +103,8 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
       case 'isnotnull':
         $selection->addCriterionObject(new pdoext_query_Criterion($column, null, '!='));
         break;
+      case 'search':
+        $selection->addCriterionObject(new pdoext_query_Criterion($column, '%' . $params[0] . '%', 'LIKE'));
       }
       return;
     }
