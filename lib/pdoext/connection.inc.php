@@ -136,7 +136,7 @@ class pdoext_Connection extends PDO {
         $more = $params ? ("\n---\n" . var_export($params, true)) : "";
         error_log("*** $hash " . date("Y-m-d H:i:s") . " from " . pdoext_find_caller() . "\n---\n" . $sql . $more . "\n---\n", 3, $this->_logTarget);
       }
-      error_log("*** $hash query completed in " . number_format($t / 1000, 4) . " s\n---\n", 3, $this->_logTarget);
+      error_log("*** $hash query completed in " . number_format($t, 4) . " s\n---\n", 3, $this->_logTarget);
     }
   }
 
