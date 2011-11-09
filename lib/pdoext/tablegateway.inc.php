@@ -393,7 +393,7 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
   function saveOrFail($entity) {
     $result = $this->save($entity);
     if ($this->hasErrors($entity)) {
-      throw new Exception("One or more errors prevented saving of entity");
+      throw new Exception("One or more errors prevented saving of entity: " . var_export($entity->_errors, true));
     }
   }
 
