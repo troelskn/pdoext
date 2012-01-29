@@ -307,19 +307,19 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
    * Hook for validating before update or insert
    * Set errors on `$data->_errors` to abort.
    */
-  protected function validate($data) {}
+  protected function validate($data, $rules = array()) {}
 
   /**
    * Hook for validating before update.
    * Set errors on `$data->_errors` to abort.
    */
-  protected function validateUpdate($data) {}
+  protected function validateUpdate($data, $rules = array()) {}
 
   /**
    * Hook for validating before insert
    * Set errors on `$data->_errors` to abort.
    */
-  protected function validateInsert($data) {}
+  protected function validateInsert($data, $rules = array()) {}
 
   /**
    * Selects a single row from the table.
@@ -414,8 +414,8 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
    */
   function insert($entity, $rules = array()) {
     $this->clearErrors($entity);
-    $this->validateInsert($entity);
-    $this->validate($entity);
+    $this->validateInsert($entity, $rules);
+    $this->validate($entity, $rules);
     if ($this->hasErrors($entity) && !in_array('ignore_all', $rules)) {
       return null;
     }
@@ -451,8 +451,8 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
    */
   function update($entity, $condition = null, $rules = array()) {
     $this->clearErrors($entity);
-    $this->validateUpdate($entity);
-    $this->validate($entity);
+    $this->validateUpdate($entity, $rules);
+    $this->validate($entity, $rules);
     if ($this->hasErrors($entity) && !in_array('ignore_all', $rules)) {
       return false;
     }
