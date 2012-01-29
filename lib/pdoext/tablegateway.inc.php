@@ -374,7 +374,7 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
    * @param  $data       array  Associative array of column => value to upsert.
    * @return boolean
    */
-  function save($entity, $respectValidationErrors = true) {
+  function save($entity, $rules = array()) {
     $data = $this->marshal($entity);
     $pk = $this->getPKey();
     if (count($pk) != 1) {
@@ -382,18 +382,18 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
     }
     foreach ($pk as $column) {
       if (!isset($data[$column])) {
-        $entity->$column = $this->insert($entity, $respectValidationErrors);
+        $entity->$column = $this->insert($entity, $rules);
         return (boolean) $entity->$column;
       }
     }
-    return $this->update($entity, null, $respectValidationErrors);
+    return $this->update($entity, null, $rules);
   }
 
   /**
    * Like save, but raises an exception if there are any errors
    */
-  function saveOrFail($entity) {
-    $result = $this->save($entity);
+  function saveOrFail($entity, $rules = array()) {
+    $result = $this->save($entity, $rules);
     if ($this->hasErrors($entity)) {
       throw new Exception("One or more errors prevented saving of entity: " . var_export($entity->_errors, true));
     }
@@ -401,9 +401,10 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
 
   /**
    * Will try to save the entity, even if validation fails.
+   * @deprecated Call as `save($entity, array('ignore_all'));`
    */
   function saveIgnoreValidationErrors($entity) {
-    return $this->save($entity, false);
+    return $this->save($entity, array('ignore_all'));
   }
 
   /**
@@ -411,11 +412,11 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
    * @param  $data       array  Associative array of column => value to insert.
    * @return boolean
    */
-  function insert($entity, $respectValidationErrors = true) {
+  function insert($entity, $rules = array()) {
     $this->clearErrors($entity);
     $this->validateInsert($entity);
     $this->validate($entity);
-    if ($respectValidationErrors && $this->hasErrors($entity)) {
+    if ($this->hasErrors($entity) && !in_array('ignore_all', $rules)) {
       return null;
     }
     $data = $this->marshal($entity);
@@ -448,11 +449,11 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
    * @param  $condition  array  Associative array of column => value to serve as conditions for the query.
    * @return boolean
    */
-  function update($entity, $condition = null, $respectValidationErrors = true) {
+  function update($entity, $condition = null, $rules = array()) {
     $this->clearErrors($entity);
     $this->validateUpdate($entity);
     $this->validate($entity);
-    if ($respectValidationErrors && $this->hasErrors($entity)) {
+    if ($this->hasErrors($entity) && !in_array('ignore_all', $rules)) {
       return false;
     }
     $data = $this->marshal($entity);
