@@ -532,6 +532,8 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
   }
 }
 
+class pdoext_MoreThanOneRowsReturned extends Exception {}
+
 /**
  * A single table query.
  *
@@ -596,7 +598,7 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate {
     $this->executeQuery();
     $row = $this->result->current();
     if ($this->result->next()) {
-      throw new Exception("Query returned more than one rows");
+      throw new pdoext_MoreThanOneRowsReturned("Query returned more than one rows");
     }
     return $row;
   }
