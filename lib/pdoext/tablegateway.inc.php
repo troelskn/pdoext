@@ -644,6 +644,22 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate {
       }
     }
   }
+
+  /**
+   * Returns the column aliases, or column names of columns of type pdoext_query_Field
+   * @return [] string
+   */
+  function getListableColumns() {
+    $columns = array();
+    foreach ($this->columns as $column) {
+      if (isset($column[1])) {
+        $columns[] = $column[1];
+      } elseif ($column[0] instanceof pdoext_query_Field) {
+        $columns[] = $column[0]->getColumnname();
+      }
+    }
+    return $columns;
+  }
 }
 
 /**
