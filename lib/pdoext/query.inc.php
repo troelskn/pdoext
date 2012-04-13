@@ -26,10 +26,10 @@ class pdoext_query_Field implements pdoext_query_iExpression {
     }
   }
   function getTablename() {
-    $this->tablename;
+    return $this->tablename;
   }
   function getColumnname() {
-    $this->columnname;
+    return $this->columnname;
   }
   function toSql($db = null) {
     if (!$db) {
