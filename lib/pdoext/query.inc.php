@@ -360,7 +360,6 @@ class pdoext_Query extends pdoext_query_Criteria implements pdoext_query_iExpres
       $alias);
   }
   function setOrder($order, $direction = null) {
-    $this->order = array();
     if ($order != "") {
       $this->addOrder($order, $direction);
     }
