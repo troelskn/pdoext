@@ -612,13 +612,12 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate {
     if ($this->result) {
       return;
     }
-    $limit = $this->pageSize();
-    $offset = max($this->currentPage() - 1, 0) * $this->pageSize();
-    $this->setLimit($limit);
-    $this->setOffset($offset);
-    $use_sql_calc_found_rows = $this->db->supportsSqlCalcFoundRows();
-    if ($this->page_size && $use_sql_calc_found_rows) {
+    if ($this->page_size) {
       $this->setSqlCalcFoundRows();
+      $limit = $this->pageSize();
+      $offset = max($this->currentPage() - 1, 0) * $this->pageSize();
+      $this->setLimit($limit);
+      $this->setOffset($offset);
     }
     $result = $this->db->query($this);
     $result->setFetchMode(PDO::FETCH_BOTH);
@@ -628,7 +627,7 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate {
       $this->result = $result;
     }
     if ($this->page_size) {
-      if ($use_sql_calc_found_rows) { // MySql specific
+      if ($this->db->supportsSqlCalcFoundRows()) { // MySql specific
         $result = $this->db->query("SELECT FOUND_ROWS()");
         $row = $result->fetch();
         $this->total_count = $row[0];
