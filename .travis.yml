@@ -1,0 +1,13 @@
+language: php
+php:
+  - 5.2
+  - 5.3
+  - 5.4
+before_script:
+  - cd lib
+  - wget http://downloads.sourceforge.net/project/simpletest/simpletest/simpletest_1.1/simpletest_1.1.0.tar.gz
+  - tar -xvzf simpletest_1.1.0.tar.gz > /dev/null 2>&1 &
+  - rm simpletest/test -R
+  - phpenv rehash
+  - cd ..
+script: php scripts/test_all.php --verbose
