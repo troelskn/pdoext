@@ -207,7 +207,7 @@ class pdoext_Connection extends PDO {
    * Returns true if a transaction has been started, and not yet finished.
    * @returns boolean
    */
-  public function _inTransaction() {
+  public function inTransaction() {
     return !! $this->_inTransaction;
   }
 
@@ -215,7 +215,7 @@ class pdoext_Connection extends PDO {
    * Throws an exception if a transaction hasn't been started
    */
   public function assertTransaction() {
-    if (!$this->_inTransaction()) {
+    if (!$this->inTransaction()) {
       throw new pdoext_NoTransactionStartedException();
     }
   }
