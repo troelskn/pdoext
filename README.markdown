@@ -1,4 +1,4 @@
-About
+About pdoext [![Build Status](https://secure.travis-ci.org/troelskn/pdoext.png?branch=master)](http://travis-ci.org/troelskn/pdoext)
 ===
 
 **pdoext** is a database abstraction layer for php. Its main features are **zero-configuration** and an **elegant api**.
