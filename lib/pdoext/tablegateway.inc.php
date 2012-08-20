@@ -383,7 +383,7 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
     foreach ($pk as $column) {
       if (!isset($data[$column])) {
         $entity->$column = $this->insert($entity, $rules);
-        return (boolean) $entity->$column;
+        return $entity->$column;
       }
     }
     return $this->update($entity, null, $rules);
@@ -397,6 +397,7 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
     if ($this->hasErrors($entity)) {
       throw new Exception("One or more errors prevented saving of entity: " . var_export($entity->_errors, true));
     }
+    return $result;
   }
 
   /**
