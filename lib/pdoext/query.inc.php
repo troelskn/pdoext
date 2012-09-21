@@ -261,15 +261,24 @@ class pdoext_query_Join extends pdoext_query_Criteria {
   protected $type;
   protected $table;
   protected $alias;
+  protected $force_index;
   public function __construct($table, $type = 'JOIN', $alias = null) {
     parent::__construct('AND');
     $this->table = $table; // @TODO Can a query be added as the join target?
     $this->type = strtoupper(trim($type))." ";
     $this->alias = $alias;
   }
+  function forceIndex($index_name) {
+    $this->force_index = $index_name;
+  }
   function toSql($db = null) {
     if (!$db) {
       $db = new pdoext_DummyConnection();
+    }
+    if ($this->force_index) {
+      $indexes = "\nFORCE INDEX (" . $db->quoteName($this->force_index) . ")\n";
+    } else {
+      $indexes = "";
     }
     if (count($this->criteria) > 0) {
       $on = "\nON\n" . pdoext_string_indent(parent::toSql($db));
@@ -277,9 +286,9 @@ class pdoext_query_Join extends pdoext_query_Criteria {
       $on = "";
     }
     if ($this->alias) {
-      return $this->type . $db->quoteName($this->table) . " AS " . $db->quoteName($this->alias) . $on;
+      return $this->type . $db->quoteName($this->table) . " AS " . $db->quoteName($this->alias) . $indexes . $on;
     }
-    return $this->type . $db->quoteName($this->table) . $on;
+    return $this->type . $db->quoteName($this->table) . $indexes . $on;
   }
 }
 
