@@ -447,9 +447,9 @@ class pdoext_Query extends pdoext_query_Criteria implements pdoext_query_iExpres
         $tmp[] = $groupby->toSql($db);
       }
       $sql .= "\nGROUP BY\n" . pdoext_string_indent(implode(",\n", $tmp));
-      if ($this->having) {
-        $sql .= "\nHAVING\n" . pdoext_string_indent($this->having->toSql($db));
-      }
+    }
+    if ($this->having) {
+      $sql .= "\nHAVING\n" . pdoext_string_indent($this->having->toSql($db));
     }
     foreach ($this->unions as $union) {
       $sql .= "\nUNION " . ($union[1] === 'DISTINCT' ? '' : $union[1]) . "\n" . $union[0]->toSQL($db);
