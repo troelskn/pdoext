@@ -433,6 +433,10 @@ class pdoext_InformationSchema {
       case 'mysql':
         $sql = "SHOW TABLES";
         break;
+      case 'pgsql':
+        $sql = "SELECT CONCAT(table_schema,'.',table_name) AS name FROM information_schema.tables 
+          WHERE table_type = 'BASE TABLE' AND table_schema NOT IN ('pg_catalog','information_schema')";
+        break;
       case 'sqlite':
         $sql = 'SELECT name FROM sqlite_master WHERE type = "table"';
         break;
@@ -452,7 +456,23 @@ class pdoext_InformationSchema {
     */
   public function getColumns($table) {
     switch ($this->connection->getAttribute(PDO::ATTR_DRIVER_NAME)) {
-      // select TABLE_NAME, COLUMN_NAME, COLUMN_DEFAULT, DATA_TYPE, COLUMN_KEY from INFORMATION_SCHEMA.COLUMNS where TABLE_SCHEMA = DATABASE() and TABLE_NAME = 'device_registrations';
+      case 'pgsql':
+        list($schema, $table) = stristr($table, '.') ? explode(".", $table) : array('public', $table);
+        $result = $this->connection->pexecute(
+          "SELECT c.column_name, c.column_default, c.data_type, (SELECT MAX(constraint_type) AS constraint_type FROM information_schema.constraint_column_usage cu        
+          JOIN information_schema.table_constraints tc ON tc.constraint_name = cu.constraint_name AND tc.constraint_type = 'PRIMARY KEY'
+          WHERE cu.column_name = c.column_name) AS constraint_type FROM information_schema.columns c WHERE c.table_schema = '" . $schema . "' AND c.table_name = '" . $table . "'");
+        $result->setFetchMode(PDO::FETCH_ASSOC);
+        $meta = array();
+        foreach ($result as $row) {
+          $meta[$row['column_name']] = array(
+            'pk' => $row['constraint_type'] == 'PRIMARY KEY',
+            'type' => $row['data_type'],
+            'default' => $row['column_default'],
+            'blob' => preg_match('/(text|bytea)/', $row['data_type']),
+          );
+        }
+        return $meta;
       case 'sqlite':
         $result = $this->connection->query("PRAGMA table_info(".$this->connection->quoteName($table).")");
         $result->setFetchMode(PDO::FETCH_ASSOC);
@@ -501,24 +521,43 @@ class pdoext_InformationSchema {
           }
         }
         return $meta;
+      case 'pgsql':
+        list($schema, $table) = stristr($table, '.') ? explode(".", $table) : array('public', $table);
+        $result = $this->connection->query(
+          "SELECT kcu.column_name AS column_name, ccu.table_name AS referenced_table_name, ccu.column_name AS referenced_column_name 
+           FROM information_schema.table_constraints AS tc JOIN information_schema.key_column_usage AS kcu ON tc.constraint_name = kcu.constraint_name
+           JOIN information_schema.constraint_column_usage AS ccu ON ccu.constraint_name = tc.constraint_name WHERE constraint_type = 'FOREIGN KEY' 
+           AND tc.table_name='" . $table . "' AND tc.table_schema = '" . $schema . "'");
+        $result->setFetchMode(PDO::FETCH_ASSOC);
+        $meta = array();
+        foreach ($result as $row) {
+          $meta[] = array(
+            'table' => $table,
+            'column' => $row['column_name'],
+            'referenced_table' => $row['referenced_table_name'],
+            'referenced_column' => $row['referenced_column_name'],
+          );
+        }
+        return $meta;
+        break;
       case 'sqlite':
         $sql = "PRAGMA foreign_key_list(".$this->connection->quoteName($table).")";
+        $result = $this->connection->query($sql);
+        $result->setFetchMode(PDO::FETCH_ASSOC);
+        $meta = array();
+        foreach ($result as $row) {
+          $meta[] = array(
+            'table' => $table,
+            'column' => $row['from'],
+            'referenced_table' => $row['table'],
+            'referenced_column' => $row['to'],
+          );
+        }
+        return $meta;
         break;
       default:
         throw new pdoext_MetaNotSupportedException();
     }
-    $result = $this->connection->query($sql);
-    $result->setFetchMode(PDO::FETCH_ASSOC);
-    $meta = array();
-    foreach ($result as $row) {
-      $meta[] = array(
-        'table' => $table,
-        'column' => $row['from'],
-        'referenced_table' => $row['table'],
-        'referenced_column' => $row['to'],
-      );
-    }
-    return $meta;
   }
   /**
     * Returns a list of foreign keys that refer a table.
@@ -538,6 +577,7 @@ class pdoext_InformationSchema {
           }
         }
         return $meta;
+      case 'pgsql':
       case 'sqlite':
         $meta = array();
         foreach ($this->getTables() as $tbl) {
