@@ -22,7 +22,7 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
     }
     $this->tablename = $tablename;
     if (is_null($this->recordtype)) {
-      $recordclass = preg_replace('/s$/', '', str_replace('_', '', $tablename)); // @TODO use inflection here
+      $recordclass = preg_replace('/s$/', '', str_replace(array('_', '.'), '', $tablename)); // @TODO use inflection here
       if (class_exists($recordclass)) {
         $this->recordtype = $recordclass;
       } else {
