@@ -468,7 +468,7 @@ class pdoext_InformationSchema {
           $meta[$row['column_name']] = array(
             'pk' => $row['constraint_type'] == 'PRIMARY KEY',
             'type' => $row['data_type'],
-            'default' => $row['column_default'],
+            'default' => stristr($row['column_default'], 'nextval') ? null : $row['column_default'],
             'blob' => preg_match('/(text|bytea)/', $row['data_type']),
           );
         }
