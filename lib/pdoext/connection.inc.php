@@ -459,16 +459,18 @@ class pdoext_InformationSchema {
       case 'pgsql':
         list($schema, $table) = stristr($table, '.') ? explode(".", $table) : array('public', $table);
         $result = $this->connection->pexecute(
-          "SELECT c.column_name, c.column_default, c.data_type, (SELECT MAX(constraint_type) AS constraint_type FROM information_schema.constraint_column_usage cu        
-          JOIN information_schema.table_constraints tc ON tc.constraint_name = cu.constraint_name AND tc.constraint_type = 'PRIMARY KEY'
-          WHERE cu.column_name = c.column_name) AS constraint_type FROM information_schema.columns c WHERE c.table_schema = '" . $schema . "' AND c.table_name = '" . $table . "'");
+          "SELECT c.column_name, c.column_default, c.data_type,
+            (SELECT MAX(constraint_type) AS constraint_type FROM information_schema.constraint_column_usage cu
+            JOIN information_schema.table_constraints tc ON tc.constraint_name = cu.constraint_name AND tc.constraint_type = 'PRIMARY KEY'
+            WHERE cu.column_name = c.column_name AND cu.table_name = c.table_name) AS constraint_type
+          FROM information_schema.columns c WHERE c.table_schema = " . $this->connection->quote($schema) . " AND c.table_name = " . $this->connection->quote($table));
         $result->setFetchMode(PDO::FETCH_ASSOC);
         $meta = array();
         foreach ($result as $row) {
           $meta[$row['column_name']] = array(
             'pk' => $row['constraint_type'] == 'PRIMARY KEY',
             'type' => $row['data_type'],
-            'default' => $row['column_default'],
+            'default' => stristr($row['column_default'], 'nextval') ? null : $row['column_default'],
             'blob' => preg_match('/(text|bytea)/', $row['data_type']),
           );
         }
