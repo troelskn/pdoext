@@ -209,7 +209,7 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
         $this->pkey[] = 'id';
       }
       if (count($this->pkey) == 0) {
-        throw new Exception("Could not determine primary key");
+        throw new Exception("Could not determine primary key for table '" . $this->tablename . "'");
       }
     }
     return $this->pkey;
