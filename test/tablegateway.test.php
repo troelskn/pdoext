@@ -107,6 +107,86 @@ class TestOfTableGatewayBasicUsecases extends UnitTestCase {
   }
 }
 
+class TestOfCompositePrimaryKey extends UnitTestCase {
+
+  function createTable() {
+    $connection = new pdoext_Connection("sqlite::memory:");
+    $connection->exec(
+      'CREATE TABLE users (
+         a INTEGER,
+         b INTEGER,
+         name VARCHAR(255),
+         PRIMARY KEY (a,b)
+       )'
+    );
+    return $connection;
+  }
+
+  function test_insert_record_using_composite_pkey() {
+    $connection = $this->createTable();
+    $gateway = new pdoext_TableGateway('users', $connection);
+    $gateway->insert(array('a' => 'foo', 'b' => 'bar', 'name' => 'John'));
+    $gateway->insert(array('a' => 'foo', 'b' => 'cuux', 'name' => 'Jim'));
+    $all_users = $connection->pexecute("SELECT * FROM users")->fetchAll(PDO::FETCH_ASSOC);
+    $expected = array(
+      array('a' => 'foo', 'b' => 'bar', 'name' => 'John'),
+      array('a' => 'foo', 'b' => 'cuux', 'name' => 'Jim')
+    );
+    $this->assertEqual($all_users, $expected);
+  }
+
+  function test_delete_record_with_composite_pkey() {
+    $connection = $this->createTable();
+    $connection->exec("INSERT INTO users VALUES ('foo', 'bar', 'John')");
+    $gateway = new pdoext_TableGateway('users', $connection);
+    $gateway->delete(array('a' => 'foo', 'b' => 'bar'));
+    $result = $connection->pexecute("SELECT COUNT(*) FROM users WHERE name = 'John'");
+    $row = $result->fetch();
+    $this->assertEqual($row[0], 0);
+  }
+
+  function test_update_record_with_composite_pkey() {
+    $connection = $this->createTable();
+    $connection->exec("INSERT INTO users VALUES ('foo', 'bar', 'John')");
+    $gateway = new pdoext_TableGateway('users', $connection);
+    $gateway->update(array('name' => 'Jim'), array('a' => 'foo', 'b' => 'bar'));
+
+    $result = $connection->pexecute("SELECT COUNT(*) FROM users WHERE name = 'John'");
+    $row = $result->fetch();
+    $this->assertEqual($row[0], 0);
+
+    $result = $connection->pexecute("SELECT COUNT(*) FROM users WHERE name = 'Jim'");
+    $row = $result->fetch();
+    $this->assertEqual($row[0], 1);
+  }
+
+  function test_update_entity_record_with_composite_pkey() {
+    $connection = $this->createTable();
+    $connection->exec("INSERT INTO users VALUES ('foo', 'bar', 'John')");
+    $gateway = new pdoext_TableGateway('users', $connection);
+    $gateway->update(array('a' => 'foo', 'b' => 'bar', 'name' => 'Jim'));
+
+    $result = $connection->pexecute("SELECT COUNT(*) FROM users WHERE name = 'John'");
+    $row = $result->fetch();
+    $this->assertEqual($row[0], 0);
+
+    $result = $connection->pexecute("SELECT COUNT(*) FROM users WHERE name = 'Jim'");
+    $row = $result->fetch();
+    $this->assertEqual($row[0], 1);
+  }
+
+  function test_fetch_record_with_composite_pkey() {
+    $connection = $this->createTable();
+    $connection->exec("INSERT INTO users VALUES ('foo', 'bar', 'John')");
+    $gateway = new pdoext_TableGateway('users', $connection);
+    $john = $gateway->fetch(array('a' => 'foo', 'b' => 'bar'));
+
+    $this->assertEqual($john->getArrayCopy(), array('a' => 'foo', 'b' => 'bar', 'name' => 'John'));
+  }
+
+  // TODO: save(), relations
+}
+
 class test_UsersGateway extends pdoext_TableGateway {
   function load($row) {
     $entity = new StdClass();
