@@ -554,6 +554,7 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate {
   protected $result;
   protected $current_page;
   protected $page_size;
+  protected $custom_count = null;
   function __construct(pdoext_TableGateway $gateway) {
     parent::__construct($gateway->getTable());
     $this->gateway = $gateway;
@@ -562,6 +563,9 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate {
   function __call($name, $params) {
     $this->gateway->applyScope($this, $name, $params);
     return $this;
+  }
+  function setCustomCount($count) {
+    $this->custom_count = $count;
   }
   function paginate($current_page, $page_size = 10) {
     $this->current_page = $current_page;
@@ -592,6 +596,9 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate {
   }
   function totalCount() {
     if ($this->page_size) {
+      if ($this->custom_count !== null) {
+        return $this->custom_count;
+      }
       $this->executeQuery();
       return $this->total_count;
     }
@@ -612,6 +619,9 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate {
     return $row;
   }
   function count() {
+    if ($this->custom_count) {
+      return $this->custom_count;
+    }
     $sql = "select count(*) from (" . $this->toSql($this->db) . ") x";
     $result = $this->db->query($sql);
     $row = $result->fetch();
@@ -622,7 +632,9 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate {
       return;
     }
     if ($this->page_size) {
-      $this->setSqlCalcFoundRows();
+      if ($this->db->supportsSqlCalcFoundRows() && is_null($this->custom_count)) {
+        $this->setSqlCalcFoundRows();
+      }
       $limit = $this->pageSize();
       $offset = max($this->currentPage() - 1, 0) * $this->pageSize();
       $this->setLimit($limit);
@@ -635,7 +647,7 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate {
     } else {
       $this->result = $result;
     }
-    if ($this->page_size) {
+    if ($this->page_size && is_null($this->custom_count)) {
       if ($this->db->supportsSqlCalcFoundRows()) { // MySql specific
         $result = $this->db->query("SELECT FOUND_ROWS()");
         $row = $result->fetch();
