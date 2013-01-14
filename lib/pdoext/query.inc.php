@@ -285,10 +285,11 @@ class pdoext_query_Join extends pdoext_query_Criteria {
     } else {
       $on = "";
     }
+    $joinTarget = $this->table instanceof pdoext_query_iExpression ? ("(" . $this->table->toSql($db) . ")") : $db->quoteName($this->table);
     if ($this->alias) {
-      return $this->type . $db->quoteName($this->table) . " AS " . $db->quoteName($this->alias) . $indexes . $on;
+      return $this->type . $joinTarget . " AS " . $db->quoteName($this->alias) . $indexes . $on;
     }
-    return $this->type . $db->quoteName($this->table) . $indexes . $on;
+    return $this->type . $joinTarget . $indexes . $on;
   }
 }
 

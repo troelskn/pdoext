@@ -544,6 +544,26 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
 class pdoext_MoreThanOneRowsReturned extends Exception {}
 
 /**
+ * Can be used as argument to a pdoext_Selection
+ */
+class pdoext_CallbackSelectionGateway {
+  function __construct($tableName, $connection, $callback) {
+    $this->tableName = $tableName;
+    $this->connection = $connection;
+    $this->callback = $callback;
+  }
+  function getTable() {
+    return $this->tableName;
+  }
+  function getDatabaseConnection() {
+    return $this->connection;
+  }
+  function load($row) {
+    return call_user_func($this->callback, $row);
+  }
+}
+
+/**
  * A single table query.
  *
  * Can be paginated.
@@ -555,7 +575,7 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate {
   protected $current_page;
   protected $page_size;
   protected $custom_count = null;
-  function __construct(pdoext_TableGateway $gateway) {
+  function __construct(/*pdoext_TableGateway*/ $gateway) {
     parent::__construct($gateway->getTable());
     $this->gateway = $gateway;
     $this->db = $gateway->getDatabaseConnection();
