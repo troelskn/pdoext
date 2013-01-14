@@ -470,9 +470,15 @@ class pdoext_InformationSchema {
           $meta[$row['column_name']] = array(
             'pk' => $row['constraint_type'] == 'PRIMARY KEY',
             'type' => $row['data_type'],
-            'default' => stristr($row['column_default'], 'nextval') ? null : $row['column_default'],
             'blob' => preg_match('/(text|bytea)/', $row['data_type']),
           );
+          if (stristr($row['column_default'], 'nextval')) {
+            $meta[$row['column_name']]['default'] = null;
+          } else if (preg_match("/^'([^']+)'::(.+)$/", $row['column_default'], $match)) {
+            $meta[$row['column_name']]['default'] = $match[1];
+          } else {
+            $meta[$row['column_name']]['default'] = $row['column_default'];
+          }
         }
         return $meta;
       case 'sqlite':
