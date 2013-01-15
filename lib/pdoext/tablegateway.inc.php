@@ -622,9 +622,9 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate {
     if ($this->custom_count) {
       return $this->custom_count;
     }
-    $sql = "select count(*) from (" . $this->toSql($this->db) . ") x";
-    $result = $this->db->query($sql);
-    $row = $result->fetch();
+    $query = "SELECT COUNT(*) FROM (" . $this->toSql($this->db) . ") x";
+    $result = $this->db->query($query);
+    $row = $result->fetch(PDO::FETCH_NUM);
     return $row[0];
   }
   protected function executeQuery() {
