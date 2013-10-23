@@ -818,7 +818,7 @@ class pdoext_DatabaseRecord implements ArrayAccess {
     return false;
   }
   function __unset($name) {
-    unset($this->_data[$key]);
+    unset($this->_data[$name]);
   }
   function offsetExists($name) {
     return $this->__isset($name);
