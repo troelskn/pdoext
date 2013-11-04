@@ -120,18 +120,37 @@ It also works the other way:
 
     $articles = $author->articles();
 
-Note that *no attempt is done at managing identity of rows*. Each time you call these methods, a new query is executed against the database. In other words:
+Note that by default, *no attempt is done at managing identity of rows*. Each time you call these methods, a new query is executed against the database. In other words:
 
     $authorOne = $article->author();
     $authorTwo = $article->author();
     assert($authorOne !== $authorTwo); // yields true
 
-Likewise, you can't assign an object directly:
+In recent versions, pdoext comes with an optional object cache (See below). With the cache enabled, semantics changes, and the database is only interrogated once:
+
+    $db->enableCache();
+    $authorOne = $article->author();
+    $authorTwo = $article->author();
+    assert($authorOne === $authorTwo); // yields true
+
+Apart from semantics, there are also performance implications of using an object cache/identity map and it's not clear cut which is better as it's a trade off.
+
+Another limitation of foreign keys is that you can't assign an object directly:
 
     // NOTE: Won't work!
     $article->author = $db->authors->whereNameIs("Jim")->one();
 
 Please understand that *this is by design*, as it spares us from a world of complexity related to the [object-relational impedance mismatch](http://en.wikipedia.org/wiki/Object-relational_impedance_mismatch). If you want this kind of functionality, use a full ORM, such as [Doctrine](http://www.doctrine-project.org/).
+
+Caching
+---
+
+pdoext has an optional object cache/identity map, that caches on primary keys. The cache isn't enabled by default, since it is a tradeoff between memory usage and the number of queries against the database. However, if you have a lot of lookups on primary key, it might improve your performance to turn it on. To enable caching, call `enableCache` on the connection object. The cache lives on the table gateways, where you can also clear it, by calling `purgeCache` on the table gateway. E.g. :
+
+    $db->enableCache(); // Enable object caching for all gateways
+    $db->authors->purgeCache(); // Clear cache for the authors gateway
+
+The cache is used when you `fetch` on primary key and whenever a record is loaded with `load`. Keep in mind that this means that records get reference semantics, rather than value semantics as is the default for pdoext.
 
 Naming
 ---
