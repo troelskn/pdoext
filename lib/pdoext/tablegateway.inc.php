@@ -22,7 +22,7 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
     }
     $this->tablename = $tablename;
     if (is_null($this->recordtype)) {
-      $recordclass = preg_replace('/s$/', '', str_replace('_', '', $tablename)); // @TODO use inflection here
+      $recordclass = preg_replace('/s$/', '', str_replace(array('_', '.'), '', $tablename)); // @TODO use inflection here
       if (class_exists($recordclass)) {
         $this->recordtype = $recordclass;
       } else {
@@ -222,7 +222,7 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
         $this->pkey[] = 'id';
       }
       if (count($this->pkey) == 0) {
-        throw new Exception("Could not determine primary key");
+        throw new Exception("Could not determine primary key for table '" . $this->tablename . "'");
       }
     }
     return $this->pkey;
@@ -452,8 +452,16 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
     }
     $query .= " (" . implode(", ", $columns) . ")";
     $query .= " VALUES (" . implode(", ", $values) . ")";
-    $this->db->pexecute($query, $bind);
-    return $this->db->lastInsertId();
+    if ($this->db->getAttribute(PDO::ATTR_DRIVER_NAME)=='pgsql') {
+      $pk = $this->getPKey();
+      $query .= " RETURNING " . $pk[0];
+    }
+    $result = $this->db->pexecute($query, $bind);
+    if ($this->db->getAttribute(PDO::ATTR_DRIVER_NAME)=='pgsql') {
+        return $result->fetchColumn(); 
+    } else {
+      return $this->db->lastInsertId();
+    }
   }
 
   /**
@@ -647,9 +655,9 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate {
     if ($this->custom_count) {
       return $this->custom_count;
     }
-    $sql = "select count(*) from (" . $this->toSql($this->db) . ") x";
-    $result = $this->db->query($sql);
-    $row = $result->fetch();
+    $query = "SELECT COUNT(*) FROM (" . $this->toSql($this->db) . ") x";
+    $result = $this->db->query($query);
+    $row = $result->fetch(PDO::FETCH_NUM);
     return $row[0];
   }
   protected function executeQuery() {
@@ -696,15 +704,19 @@ class pdoext_Selection extends pdoext_Query implements IteratorAggregate {
    * @return [] string
    */
   function getListableColumns() {
-    $columns = array();
-    foreach ($this->columns as $column) {
-      if (isset($column[1])) {
-        $columns[] = $column[1];
-      } elseif ($column[0] instanceof pdoext_query_Field) {
-        $columns[] = $column[0]->getColumnname();
+    if ($this->columns) {
+      $columns = array();
+      foreach ($this->columns as $column) {
+        if (isset($column[1])) {
+          $columns[] = $column[1];
+        } elseif ($column[0] instanceof pdoext_query_Field) {
+          $columns[] = $column[0]->getColumnname();
+        }
       }
+      return $columns;
+    } else {
+      return $this->gateway->getListableColumns();
     }
-    return $columns;
   }
 }
 
@@ -819,7 +831,7 @@ class pdoext_DatabaseRecord implements ArrayAccess {
     return false;
   }
   function __unset($name) {
-    unset($this->_data[$key]);
+    unset($this->_data[$name]);
   }
   function offsetExists($name) {
     return $this->__isset($name);
