@@ -140,7 +140,20 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
   function load($row) {
     if (is_array($row)) {
       $classname = $this->recordtype;
-      return new $classname($row, $this);
+      $pkey = array();
+      $has_pkey = true;
+      foreach ($this->getPKey() as $column) {
+        if (isset($row[$column])) {
+          $pkey[$column] = $row[$column];
+        } else {
+          $has_pkey = false;
+        }
+      }
+      if ($has_pkey) {
+        return $this->cachePut($pkey, new $classname($row, $this));
+      } else {
+        return new $classname($row, $this);
+      }
     }
   }
 
