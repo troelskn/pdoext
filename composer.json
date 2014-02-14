@@ -1,0 +1,10 @@
+{
+    "name": "troelskn/pdoext",
+    "type": "library",
+    "description": "Simple, yet powerful, ORM for PHP, based on PDO",
+    "keywords": ["pdoext","pdo","orm"],
+    "homepage": "http://github.com/troelskn/pdoext",
+    "autoload": {
+        "classmap": ["lib/"]
+    }
+}
