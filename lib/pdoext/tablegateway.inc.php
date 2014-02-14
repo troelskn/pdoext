@@ -454,11 +454,11 @@ class pdoext_TableGateway implements IteratorAggregate, Countable {
     $query .= " VALUES (" . implode(", ", $values) . ")";
     if ($this->db->getAttribute(PDO::ATTR_DRIVER_NAME)=='pgsql') {
       $pk = $this->getPKey();
-      $query .= " RETURNING " . $pk[0];
+      $query .= " RETURNING " . implode(',', $pk);
     }
     $result = $this->db->pexecute($query, $bind);
     if ($this->db->getAttribute(PDO::ATTR_DRIVER_NAME)=='pgsql') {
-        return $result->fetchColumn(); 
+        return (count($pk)==1) ? $result->fetchColumn() : $result->fetchAll();
     } else {
       return $this->db->lastInsertId();
     }
