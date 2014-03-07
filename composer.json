@@ -5,6 +5,7 @@
     "keywords": ["pdoext","pdo","orm"],
     "homepage": "http://github.com/troelskn/pdoext",
     "autoload": {
+        "files": ["lib/pdoext.inc.php"],
         "classmap": ["lib/"]
     }
 }
