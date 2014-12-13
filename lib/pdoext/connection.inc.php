@@ -388,6 +388,42 @@ class pdoext_Connection extends PDO {
   }
 
   /**
+   * Pretty prints a result queried from database in ASCII
+   */
+  static public function dumpTable(/* PDOStatement or array */ $stmt) {
+    $buffer = "";
+    $printColumn = true;
+    foreach ($stmt as $row) {
+      if ($printColumn) {
+        foreach ($row as $column) {
+          $buffer .= str_pad("", 20, "-")."-+-";
+        }
+        $buffer .= "\n";
+        foreach ($row as $key => $column) {
+          $buffer .= str_pad(substr($key, 0, 20), 20)." | ";
+        }
+        $buffer .= "\n";
+        foreach ($row as $column) {
+          $buffer .= str_pad("", 20, "-")."-+-";
+        }
+        $buffer .= "\n";
+        $printColumn = false;
+      }
+      foreach ($row as $column) {
+        $buffer .= str_pad(substr($column, 0, 20), 20)." | ";
+      }
+      $buffer .= "\n";
+    }
+    if (isset($row)) {
+      foreach ($row as $column) {
+        $buffer .= str_pad("", 20, "-")."-+-";
+      }
+      $buffer .= "\n";
+    }
+    return $buffer;
+  }
+
+  /**
    * Magic property getter - alias for `table()`
    */
   function __get($name) {
