@@ -368,6 +368,26 @@ class pdoext_Connection extends PDO {
   }
 
   /**
+   * Takes an array and generates an escaped (quoted) SQL string that fit with the IN statement
+   * e.g.
+   *   $ids = [1, 2, 3, 4];
+   *   $stmt = $db->query("SELECT * FROM table WHERE id IN ".$db->safeIn($ids));
+   */
+  public function safeIn(array $elements) {
+    $inList = "(";
+    $first = true;
+    foreach($elements as $element) {
+      if (!$first) {
+        $inList .= ", ";
+      }
+      $inList .= $this->quote($element);
+      $first = false;
+    }
+    $inList .= ")";
+    return $inList;
+  }
+
+  /**
    * Magic property getter - alias for `table()`
    */
   function __get($name) {
