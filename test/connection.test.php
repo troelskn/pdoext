@@ -12,6 +12,8 @@ require_once 'pdoext/connection.inc.php';
 require_once 'pdoext/query.inc.php';
 
 class TestOfNestedTransactions extends UnitTestCase {
+  protected $db;
+
   protected function getConnection() {
     return new pdoext_Connection("sqlite::memory:");
   }
