@@ -16,6 +16,8 @@ class pdoext_Connection extends PDO {
   protected $_tableNameMapping = array();
   protected $_informationSchema;
   protected $_cacheEnabled = false;
+  protected $_allowNestedTransaction = false;
+  protected $_transactionLevel = 0;
 
   /**
    * Creates a new database connection.
@@ -58,6 +60,24 @@ class pdoext_Connection extends PDO {
         break;
     }
     $this->_informationSchema = new pdoext_InformationSchema($this);
+  }
+
+  public function getNestedTransactionStatus() {
+    return $this->_allowNestedTransaction;
+  }
+
+  /**
+   * This feature is only supported for rdbms that supports SAVEPOINTs
+   */
+  public function enableNestedTransaction() {
+    $this->_allowNestedTransaction = true;
+  }
+
+  public function disableNestedTransaction() {
+    while ($this->_transactionLevel > 1) {
+      $this->rollback();
+    }
+    $this->_allowNestedTransaction = false;
   }
 
   public function cacheEnabled() {
@@ -225,21 +245,37 @@ class pdoext_Connection extends PDO {
    * Like PDO::beginTransaction(), but throws an exception, if a transaction is already started.
    */
   public function beginTransaction() {
-    if ($this->_inTransaction) {
+    if (!$this->_allowNestedTransaction && $this->_inTransaction) {
       throw new pdoext_AlreadyInTransactionException(sprintf("Already in transaction. Transaction started at line %s in file %s", $this->_inTransaction[0], $this->_inTransaction[1]));
     }
-    $result = parent::beginTransaction();
+
+    if ($this->_transactionLevel > 0) {
+      $result = $this->exec("SAVEPOINT LEVEL".$this->_transactionLevel);
+    } else {
+      $result = parent::beginTransaction();
+    }
     $stack = debug_backtrace();
-    $this->_inTransaction = array($stack[0]['file'], $stack[0]['line']);
+    if ($this->_transactionLevel == 0) {
+      $this->_inTransaction = array($stack[0]['file'], $stack[0]['line']);
+    }
+
+    $this->_transactionLevel++;
     return $result;
   }
+
 
   /**
    * Rolls back a transaction
    */
   public function rollback() {
-    $result = parent::rollback();
-    $this->_inTransaction = false;
+    $this->_transactionLevel--;
+    if ($this->_transactionLevel > 0) {
+      $result = $this->exec("ROLLBACK TO SAVEPOINT LEVEL".$this->_transactionLevel);
+      $this->exec("RELEASE SAVEPOINT LEVEL".$this->_transactionLevel);
+    } else {
+      $result = parent::rollback();
+      $this->_inTransaction = false;
+    }
     return $result;
   }
 
@@ -247,8 +283,13 @@ class pdoext_Connection extends PDO {
    * Commits a transaction
    */
   public function commit() {
-    $result = parent::commit();
-    $this->_inTransaction = false;
+    $this->_transactionLevel--;
+    if ($this->_transactionLevel > 0) {
+      $result = $this->exec("RELEASE SAVEPOINT LEVEL".$this->_transactionLevel);
+    } else {
+      $result = parent::commit();
+      $this->_inTransaction = false;
+    }
     return $result;
   }
 
@@ -434,7 +475,7 @@ class pdoext_InformationSchema {
         $sql = "SHOW TABLES";
         break;
       case 'pgsql':
-        $sql = "SELECT CONCAT(table_schema,'.',table_name) AS name FROM information_schema.tables 
+        $sql = "SELECT CONCAT(table_schema,'.',table_name) AS name FROM information_schema.tables
           WHERE table_type = 'BASE TABLE' AND table_schema NOT IN ('pg_catalog','information_schema')";
         break;
       case 'sqlite':
@@ -532,9 +573,9 @@ class pdoext_InformationSchema {
       case 'pgsql':
         list($schema, $table) = stristr($table, '.') ? explode(".", $table) : array('public', $table);
         $result = $this->connection->query(
-          "SELECT kcu.column_name AS column_name, ccu.table_name AS referenced_table_name, ccu.column_name AS referenced_column_name 
+          "SELECT kcu.column_name AS column_name, ccu.table_name AS referenced_table_name, ccu.column_name AS referenced_column_name
            FROM information_schema.table_constraints AS tc JOIN information_schema.key_column_usage AS kcu ON tc.constraint_name = kcu.constraint_name
-           JOIN information_schema.constraint_column_usage AS ccu ON ccu.constraint_name = tc.constraint_name WHERE constraint_type = 'FOREIGN KEY' 
+           JOIN information_schema.constraint_column_usage AS ccu ON ccu.constraint_name = tc.constraint_name WHERE constraint_type = 'FOREIGN KEY'
            AND tc.table_name='" . $table . "' AND tc.table_schema = '" . $schema . "'");
         $result->setFetchMode(PDO::FETCH_ASSOC);
         $meta = array();
