@@ -16,6 +16,8 @@ class pdoext_Connection extends PDO {
   protected $_tableNameMapping = array();
   protected $_informationSchema;
   protected $_cacheEnabled = false;
+  protected $_allowNestedTransaction = false;
+  protected $_transactionLevel = 0;
 
   /**
    * Creates a new database connection.
@@ -58,6 +60,24 @@ class pdoext_Connection extends PDO {
         break;
     }
     $this->_informationSchema = new pdoext_InformationSchema($this);
+  }
+
+  public function getNestedTransactionStatus() {
+    return $this->_allowNestedTransaction;
+  }
+
+  /**
+   * This feature is only supported for rdbms that supports SAVEPOINTs
+   */
+  public function enableNestedTransaction() {
+    $this->_allowNestedTransaction = true;
+  }
+
+  public function disableNestedTransaction() {
+    while ($this->_transactionLevel > 1) {
+      $this->rollback();
+    }
+    $this->_allowNestedTransaction = false;
   }
 
   public function cacheEnabled() {
@@ -225,21 +245,37 @@ class pdoext_Connection extends PDO {
    * Like PDO::beginTransaction(), but throws an exception, if a transaction is already started.
    */
   public function beginTransaction() {
-    if ($this->_inTransaction) {
+    if (!$this->_allowNestedTransaction && $this->_inTransaction) {
       throw new pdoext_AlreadyInTransactionException(sprintf("Already in transaction. Transaction started at line %s in file %s", $this->_inTransaction[0], $this->_inTransaction[1]));
     }
-    $result = parent::beginTransaction();
+
+    if ($this->_transactionLevel > 0) {
+      $result = $this->exec("SAVEPOINT LEVEL".$this->_transactionLevel);
+    } else {
+      $result = parent::beginTransaction();
+    }
     $stack = debug_backtrace();
-    $this->_inTransaction = array($stack[0]['file'], $stack[0]['line']);
+    if ($this->_transactionLevel == 0) {
+      $this->_inTransaction = array($stack[0]['file'], $stack[0]['line']);
+    }
+
+    $this->_transactionLevel++;
     return $result;
   }
+
 
   /**
    * Rolls back a transaction
    */
   public function rollback() {
-    $result = parent::rollback();
-    $this->_inTransaction = false;
+    $this->_transactionLevel--;
+    if ($this->_transactionLevel > 0) {
+      $result = $this->exec("ROLLBACK TO SAVEPOINT LEVEL".$this->_transactionLevel);
+      $this->exec("RELEASE SAVEPOINT LEVEL".$this->_transactionLevel);
+    } else {
+      $result = parent::rollback();
+      $this->_inTransaction = false;
+    }
     return $result;
   }
 
@@ -247,8 +283,13 @@ class pdoext_Connection extends PDO {
    * Commits a transaction
    */
   public function commit() {
-    $result = parent::commit();
-    $this->_inTransaction = false;
+    $this->_transactionLevel--;
+    if ($this->_transactionLevel > 0) {
+      $result = $this->exec("RELEASE SAVEPOINT LEVEL".$this->_transactionLevel);
+    } else {
+      $result = parent::commit();
+      $this->_inTransaction = false;
+    }
     return $result;
   }
 
@@ -324,6 +365,62 @@ class pdoext_Connection extends PDO {
       $this->_tableGatewayCache[$real_tablename] = new $gatewayclass($real_tablename, $this);
     }
     return $this->_tableGatewayCache[$real_tablename];
+  }
+
+  /**
+   * Takes an array and generates an escaped (quoted) SQL string that fit with the IN statement
+   * e.g.
+   *   $ids = [1, 2, 3, 4];
+   *   $stmt = $db->query("SELECT * FROM table WHERE id IN ".$db->safeIn($ids));
+   */
+  public function safeIn(array $elements) {
+    $inList = "(";
+    $first = true;
+    foreach($elements as $element) {
+      if (!$first) {
+        $inList .= ", ";
+      }
+      $inList .= $this->quote($element);
+      $first = false;
+    }
+    $inList .= ")";
+    return $inList;
+  }
+
+  /**
+   * Pretty prints a result queried from database in ASCII
+   */
+  static public function dumpTable(/* PDOStatement or array */ $stmt) {
+    $buffer = "";
+    $printColumn = true;
+    foreach ($stmt as $row) {
+      if ($printColumn) {
+        foreach ($row as $column) {
+          $buffer .= str_pad("", 20, "-")."-+-";
+        }
+        $buffer .= "\n";
+        foreach ($row as $key => $column) {
+          $buffer .= str_pad(substr($key, 0, 20), 20)." | ";
+        }
+        $buffer .= "\n";
+        foreach ($row as $column) {
+          $buffer .= str_pad("", 20, "-")."-+-";
+        }
+        $buffer .= "\n";
+        $printColumn = false;
+      }
+      foreach ($row as $column) {
+        $buffer .= str_pad(substr($column, 0, 20), 20)." | ";
+      }
+      $buffer .= "\n";
+    }
+    if (isset($row)) {
+      foreach ($row as $column) {
+        $buffer .= str_pad("", 20, "-")."-+-";
+      }
+      $buffer .= "\n";
+    }
+    return $buffer;
   }
 
   /**
@@ -434,7 +531,7 @@ class pdoext_InformationSchema {
         $sql = "SHOW TABLES";
         break;
       case 'pgsql':
-        $sql = "SELECT CONCAT(table_schema,'.',table_name) AS name FROM information_schema.tables 
+        $sql = "SELECT CONCAT(table_schema,'.',table_name) AS name FROM information_schema.tables
           WHERE table_type = 'BASE TABLE' AND table_schema NOT IN ('pg_catalog','information_schema')";
         break;
       case 'sqlite':
@@ -457,28 +554,32 @@ class pdoext_InformationSchema {
   public function getColumns($table) {
     switch ($this->connection->getAttribute(PDO::ATTR_DRIVER_NAME)) {
       case 'pgsql':
-        list($schema, $table) = stristr($table, '.') ? explode(".", $table) : array('public', $table);
+        /** method for finding primary key see http://wiki.postgresql.org/wiki/Retrieve_primary_key_columns */
         $result = $this->connection->pexecute(
-          "SELECT c.column_name, c.column_default, c.data_type,
-            (SELECT MAX(constraint_type) AS constraint_type FROM information_schema.constraint_column_usage cu
-            JOIN information_schema.table_constraints tc ON tc.constraint_name = cu.constraint_name AND tc.constraint_type = 'PRIMARY KEY'
-            WHERE cu.column_name = c.column_name AND cu.table_name = c.table_name) AS constraint_type
-          FROM information_schema.columns c WHERE c.table_schema = " . $this->connection->quote($schema) . " AND c.table_name = " . $this->connection->quote($table));
+          "SELECT attname as column_name,
+                  format_type(pg_attribute.atttypid, pg_attribute.atttypmod) as data_type,
+                  pg_index.indisprimary,
+                  pg_attrdef.adsrc as column_default
+             FROM pg_attribute
+        LEFT JOIN pg_index
+               ON pg_index.indrelid = pg_attribute.attrelid
+              AND pg_attribute.attnum = any (pg_index.indkey)
+              AND pg_index.indisprimary = true
+        LEFT JOIN pg_attrdef
+               ON pg_attrdef.adrelid = pg_attribute.attrelid
+              AND pg_attrdef.adnum = pg_attribute.attnum
+            WHERE attrelid = :tableName::regclass
+              AND attnum > 0
+              AND attisdropped = false", array(":tableName" => $table));
         $result->setFetchMode(PDO::FETCH_ASSOC);
         $meta = array();
         foreach ($result as $row) {
           $meta[$row['column_name']] = array(
-            'pk' => $row['constraint_type'] == 'PRIMARY KEY',
+            'pk' => $row['indisprimary'] == 't',
             'type' => $row['data_type'],
             'blob' => preg_match('/(text|bytea)/', $row['data_type']),
+            'default' => $row['column_default']
           );
-          if (stristr($row['column_default'], 'nextval')) {
-            $meta[$row['column_name']]['default'] = null;
-          } else if (preg_match("/^'([^']+)'::(.+)$/", $row['column_default'], $match)) {
-            $meta[$row['column_name']]['default'] = $match[1];
-          } else {
-            $meta[$row['column_name']]['default'] = $row['column_default'];
-          }
         }
         return $meta;
       case 'sqlite':
@@ -516,6 +617,10 @@ class pdoext_InformationSchema {
     */
   public function getForeignKeys($table) {
     switch ($this->connection->getAttribute(PDO::ATTR_DRIVER_NAME)) {
+      case 'pgsql':
+        if (strpos(".", $table) === false) {
+          $table = $this->lookupQualifiedTablename($table);
+        }
       case 'mysql':
         $meta = array();
         foreach ($this->loadKeys() as $info) {
@@ -529,25 +634,6 @@ class pdoext_InformationSchema {
           }
         }
         return $meta;
-      case 'pgsql':
-        list($schema, $table) = stristr($table, '.') ? explode(".", $table) : array('public', $table);
-        $result = $this->connection->query(
-          "SELECT kcu.column_name AS column_name, ccu.table_name AS referenced_table_name, ccu.column_name AS referenced_column_name 
-           FROM information_schema.table_constraints AS tc JOIN information_schema.key_column_usage AS kcu ON tc.constraint_name = kcu.constraint_name
-           JOIN information_schema.constraint_column_usage AS ccu ON ccu.constraint_name = tc.constraint_name WHERE constraint_type = 'FOREIGN KEY' 
-           AND tc.table_name='" . $table . "' AND tc.table_schema = '" . $schema . "'");
-        $result->setFetchMode(PDO::FETCH_ASSOC);
-        $meta = array();
-        foreach ($result as $row) {
-          $meta[] = array(
-            'table' => $table,
-            'column' => $row['column_name'],
-            'referenced_table' => $row['referenced_table_name'],
-            'referenced_column' => $row['referenced_column_name'],
-          );
-        }
-        return $meta;
-        break;
       case 'sqlite':
         $sql = "PRAGMA foreign_key_list(".$this->connection->quoteName($table).")";
         $result = $this->connection->query($sql);
@@ -572,6 +658,10 @@ class pdoext_InformationSchema {
     */
   public function getReferencingKeys($table) {
     switch ($this->connection->getAttribute(PDO::ATTR_DRIVER_NAME)) {
+      case 'pgsql':
+        if (strpos(".", $table) === false) {
+          $table = $this->lookupQualifiedTablename($table);
+        }
       case 'mysql':
         $meta = array();
         foreach ($this->loadKeys() as $info) {
@@ -585,7 +675,6 @@ class pdoext_InformationSchema {
           }
         }
         return $meta;
-      case 'pgsql':
       case 'sqlite':
         $meta = array();
         foreach ($this->getTables() as $tbl) {
@@ -623,15 +712,55 @@ class pdoext_InformationSchema {
     return $this->has_many[$tablename];
   }
 
+  protected function lookupQualifiedTablename($tableName) {
+    $stmt = $this->connection->pexecute(
+      "SELECT concat(nspname, '.', relname) FROM pg_class JOIN pg_namespace ON pg_class.relnamespace = pg_namespace.oid WHERE pg_class.oid = :tablename::regclass",
+      array(":tablename" => $tableName)
+    );
+    return $stmt->fetchColumn();
+  }
+
   /**
    * @internal
    */
   protected function loadKeys() {
     if (!isset($this->keys)) {
-      $sql = "SELECT TABLE_NAME AS `table_name`, COLUMN_NAME AS `column_name`, REFERENCED_COLUMN_NAME AS `referenced_column_name`, REFERENCED_TABLE_NAME AS `referenced_table_name`
+      switch ($this->connection->getAttribute(PDO::ATTR_DRIVER_NAME)) {
+        case 'mysql':
+          $sql = "SELECT TABLE_NAME AS `table_name`, COLUMN_NAME AS `column_name`, REFERENCED_COLUMN_NAME AS `referenced_column_name`, REFERENCED_TABLE_NAME AS `referenced_table_name`
 FROM information_schema.KEY_COLUMN_USAGE
 WHERE TABLE_SCHEMA = DATABASE()
 AND REFERENCED_TABLE_SCHEMA = DATABASE()";
+          break;
+        case 'pgsql':
+          $sql = "SELECT conname as foreign_key_name,
+                         concat(pg_namespace_con.nspname, '.', pg_class_con.relname) as table_name,
+                         conatt.attname as column_name,
+                         concat(pg_namespace_con.nspname, '.', pg_class.relname) as referenced_table_name,
+                         pg_attribute.attname as referenced_column_name
+                    FROM pg_constraint
+              CROSS JOIN generate_series(1, array_length(conkey,1))
+                    JOIN pg_class as pg_class_con
+                      ON pg_class_con.oid = pg_constraint.conrelid
+                    JOIN pg_namespace AS pg_namespace_con
+                      ON pg_namespace_con.oid = pg_class_con.relnamespace
+                    JOIN pg_class
+                      ON pg_class.oid = pg_constraint.confrelid
+                    JOIN pg_namespace AS pg_namespace
+                      ON pg_namespace.oid = pg_class.relnamespace
+                    JOIN pg_attribute
+                      ON pg_attribute.attrelid = pg_constraint.confrelid
+                     AND pg_attribute.attnum = pg_constraint.confkey[generate_series]
+                    JOIN pg_attribute conatt
+                      ON conatt.attrelid = pg_constraint.conrelid
+                     AND conatt.attnum = pg_constraint.conkey[generate_series]
+                   WHERE contype = 'f'
+                     AND pg_attribute.attisdropped = false
+                ORDER BY 1, 2, 3, 4";
+          break;
+        default:
+          throw new pdoext_MetaNotSupportedException();
+      }
       $result = $this->connection->query($sql);
       $result->setFetchMode(PDO::FETCH_ASSOC);
       $this->keys = array();
